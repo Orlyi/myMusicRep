@@ -1,0 +1,38 @@
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    """应用配置，自动从 .env 文件加载"""
+
+    # 应用
+    app_name: str = "myMusic"
+    debug: bool = True
+    server_port: int = 8000
+
+    # 数据库
+    db_host: str = "localhost"
+    db_port: int = 3306
+    db_user: str = "root"
+    db_password: str = ""
+    db_name: str = "myMusic"
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+
+    # JWT
+    jwt_secret_key: str = "change-me"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 1440
+
+    @property
+    def database_url(self) -> str:
+        """构建异步 MySQL 连接字符串"""
+        return (
+            f"mysql+asyncmy://{self.db_user}:{self.db_password}"
+            f"@{self.db_host}:{self.db_port}/{self.db_name}"
+            f"?charset=utf8mb4"
+        )
+
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+
+settings = Settings()

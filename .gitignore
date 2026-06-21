@@ -1,0 +1,27 @@
+# ── 依赖 ──
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# ── 构建产出 ──
+dist/
+build/
+
+# ── 环境配置 ──
+.env
+.env.local
+
+# ── IDE ──
+.idea/
+*.iml
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── 不上传的目录 ──
+oldMusic/
+music/
+spiders/
+备份/
