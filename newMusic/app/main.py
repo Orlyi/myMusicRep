@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.api.v1 import router as v1_router
 from app.core.config import settings
+from app.core.redis_client import close_redis
 
 
 
@@ -13,6 +15,8 @@ async def lifespan(app: FastAPI):
     print(f"🎵 {settings.app_name} 启动中...")
     yield
     # 关闭时
+    print("🔌 关闭 Redis 连接...")
+    await close_redis()
     print(f"🎵 {settings.app_name} 已关闭")
 
 app = FastAPI(
@@ -38,10 +42,13 @@ app.add_middleware(
 # 注册路由
 app.include_router(v1_router)
 
+# 静态文件（头像等上传资源）
+app.mount("/static", StaticFiles(directory="uploads"), name="static")
+
 
 if __name__ == "__main__":
     import uvicorn
-
+    print("正在启动")
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",

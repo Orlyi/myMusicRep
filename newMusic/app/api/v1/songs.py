@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
-from app.core.deps import get_current_user
-from app.models import Songs, PlayHistory, Users
+from app.core.deps import get_current_user, get_current_user_optional
+from app.models import Songs, PlayHistory, Users, Artists, UserSaveSong
 from app.schemas.common import APIResponse, PaginatedResponse
+from app.services.song_service import is_song_loved
 from app.schemas.song import SongBase, SongDetail
 
 router = APIRouter()
@@ -38,26 +39,46 @@ async def play_song(
 @router.post("/{song_id}/download", response_model=APIResponse)
 async def download_song(
         song_id: int,
-        db: AsyncSession = Depends(get_db)):
+        db: AsyncSession = Depends(get_db),
+        current_user: Users | None = Depends(get_current_user_optional)):
     result = await db.execute(
-        select(Songs)
+        select(Songs, Artists.artist_name)
+        .outerjoin(Artists, Songs.artist_id == Artists.artist_id)
         .where(Songs.song_id == song_id)
     )
-    song = result.scalar_one_or_none()
-    if not song:
+    row = result.one_or_none()
+    if not row:
         return APIResponse(code=404, message="Song not found")
 
+    song, artist_name = row
     song.download_count += 1
+
+    is_love = False
+    if current_user:
+        is_love = await is_song_loved(current_user.user_id, song_id, db)
+
     await db.flush()
-    return APIResponse(data={"download_url": song.download_url})
+    return APIResponse(data={
+        "song_id": song.song_id,
+        "song_name": song.song_name,
+        "picture_url": song.picture_url,
+        "download_url": song.download_url,
+        "artist_name": artist_name or "",
+        "is_love": is_love,
+    })
 
 @router.get("", response_model=APIResponse)
 async def list_songs(
         page: int = Query(default = 1, ge = 1),
         page_size: int = Query(default = 20, ge = 1, le=100),
         keyword: str = Query(default = "", max_length=100),
-        db: AsyncSession = Depends(get_db)):
-    query = select(Songs).where(Songs.current_status == 1)
+        db: AsyncSession = Depends(get_db),
+        current_user: Users | None = Depends(get_current_user_optional)):
+    query = (
+        select(Songs, Artists.artist_name)
+        .outerjoin(Artists, Songs.artist_id == Artists.artist_id)
+        .where(Songs.current_status == 1)
+    )
     count_query = (select(func.count())
                    .select_from(Songs)
                    .where(Songs.current_status == 1))
@@ -75,12 +96,36 @@ async def list_songs(
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
-    songs = result.scalars().all()
+    rows = result.all()
+
+    # 已登录 → 批量查收藏状态
+    loved_ids: set[int] = set()
+    if current_user and rows:
+        song_ids = [s.song_id for s, _ in rows]
+        saved_result = await db.execute(
+            select(UserSaveSong.song_id)
+            .where(UserSaveSong.user_id == current_user.user_id,
+                   UserSaveSong.song_id.in_(song_ids))
+        )
+        loved_ids = {row[0] for row in saved_result}
 
     return APIResponse(
         data = PaginatedResponse(
             items = [
-                SongBase.model_validate(s).model_dump() for s in songs
+                {
+                    "song_id": s.song_id,
+                    "song_name": s.song_name,
+                    "artist_id": s.artist_id,
+                    "artist_name": artist_name or "",
+                    "album_id": s.album_id,
+                    "picture_url": s.picture_url,
+                    "source": s.source,
+                    "download_url": s.download_url,
+                    "download_count": s.download_count,
+                    "play_count": s.play_count,
+                    "is_love": s.song_id in loved_ids,
+                }
+                for s, artist_name in rows
             ],
             total = total,
             page = page,

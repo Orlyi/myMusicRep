@@ -3,7 +3,9 @@ import {useEffect, useState} from "react";
 
 export default function MessagesPage(){
     const {setHeaderContent}= useOutletContext()
-    const [acting, setActing]= useState(0)
+    const [acting, setActing]= useState(1)
+
+
     useEffect(() => {
         setHeaderContent(
             <>

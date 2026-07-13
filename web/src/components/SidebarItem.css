@@ -1,0 +1,26 @@
+
+
+
+.sidebar-item{
+    width:80%;
+    height:100%;
+    background-color: #ffffff;
+    position:relative;
+    display:flex;
+    justify-content:left;
+    align-items: center;
+    font-size:1.5em;
+    svg{
+    width: 1em;
+}
+&:active{
+        background-color: #eeeeee;
+    }
+}
+.sidebar-item-font{
+    line-height: 1em;
+    display: flex;
+    font-size: 16px;
+    align-items: center;
+    gap: 10vw;
+}

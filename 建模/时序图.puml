@@ -1,0 +1,137 @@
+@startuml 用户登录并播放歌曲-时序图
+' ============================================================
+' 场景：用户从登录到播放一首歌的完整时序
+' 涉及：React前端 → Axios客户端 → FastAPI后端 → 数据库
+' ============================================================
+
+title myMusic 系统时序图 —— 用户登录并播放歌曲
+
+actor 用户 as User
+participant "React\n(LoginPage)" as LoginPage
+participant "React\n(HomePage)" as HomePage
+participant "Axios\nClient" as Axios
+participant "FastAPI\n/auth" as AuthAPI
+participant "FastAPI\n/songs" as SongAPI
+participant "Auth\nMiddleware" as AuthMW
+database "MySQL\nDatabase" as DB
+
+== 1. 用户登录 ==
+
+User -> LoginPage : 输入用户名/密码，点击登录
+activate LoginPage
+
+LoginPage -> LoginPage : 前端校验\n(用户名/密码非空)
+
+LoginPage -> Axios : POST /auth/login\n{user_name, password}
+activate Axios
+
+Axios -> AuthAPI : HTTP POST /api/v1/auth/login
+activate AuthAPI
+
+AuthAPI -> DB : SELECT * FROM users\nWHERE user_name = ?
+activate DB
+DB --> AuthAPI : user 记录 / null
+deactivate DB
+
+alt 用户不存在或密码错误
+    AuthAPI --> Axios : 401 Unauthorized
+    Axios --> LoginPage : error
+    LoginPage -> LoginPage : 显示错误提示
+else 验证成功
+    AuthAPI -> AuthAPI : bcrypt.verify_password()
+    AuthAPI -> AuthAPI : jwt.encode({sub:user_id, exp})
+    AuthAPI --> Axios : 200 {token, user_id, user_name, avatar_url}
+    deactivate AuthAPI
+
+    Axios --> LoginPage : result.data
+    deactivate Axios
+
+    LoginPage -> LoginPage : 根据"自动登录"选择\nlocalStorage 或 sessionStorage\n存储 token + user
+    LoginPage -> LoginPage : navigate("/") 跳转首页
+    deactivate LoginPage
+end
+
+== 2. 路由守卫校验 ==
+
+HomePage -> HomePage : useAuth() 检查 token
+note right of HomePage
+  useEffect 读取 localStorage/sessionStorage
+  有 token → 渲染首页
+  无 token → navigate("/login")
+end note
+
+== 3. 浏览歌曲列表 ==
+
+User -> HomePage : 进入首页，查看热门歌曲
+activate HomePage
+
+HomePage -> Axios : GET /songs?page=1&page_size=20
+activate Axios
+Axios -> Axios : 拦截器自动附加\nAuthorization: Bearer <token>
+
+Axios -> SongAPI : GET /api/v1/songs?page=1&page_size=20
+activate SongAPI
+
+SongAPI -> DB : SELECT * FROM songs\nWHERE current_status=1\nORDER BY create_time DESC\nLIMIT 20 OFFSET 0
+activate DB
+DB --> SongAPI : 歌曲列表 + total
+deactivate DB
+
+SongAPI --> Axios : 200 {items:[...], total, page}
+deactivate SongAPI
+Axios --> HomePage : data
+deactivate Axios
+
+HomePage -> HomePage : 渲染歌曲列表
+
+== 4. 播放歌曲 ==
+
+User -> HomePage : 点击播放某首歌
+HomePage -> Axios : POST /songs/{song_id}/play\n{is_completed:true, playlist_duration:0}
+activate Axios
+Axios -> Axios : 附加 Bearer token
+
+Axios -> AuthMW : 请求到达 /songs/{id}/play
+activate AuthMW
+
+AuthMW -> AuthMW : decode_access_token()\n解析 JWT 获取 user_id
+
+AuthMW -> DB : SELECT * FROM users\nWHERE user_id = ?
+activate DB
+DB --> AuthMW : user 对象
+deactivate DB
+
+alt token 无效或用户不存在
+    AuthMW --> Axios : 401 → 触发响应拦截器
+    Axios -> Axios : 清除 token，跳转 /login
+else 认证通过
+    AuthMW -> SongAPI : current_user = Users 实例
+    deactivate AuthMW
+    activate SongAPI
+
+    SongAPI -> DB : SELECT * FROM songs\nWHERE song_id = ?
+    activate DB
+    DB --> SongAPI : song 记录
+    deactivate DB
+
+    alt 歌曲不存在
+        SongAPI --> Axios : 404 Song not found
+    else 歌曲存在
+        SongAPI -> SongAPI : song.play_count += 1
+        SongAPI -> DB : INSERT INTO play_history\n(user_id, song_id, artist_id,\n is_completed, playlist_duration)
+        activate DB
+        DB --> SongAPI : OK
+        deactivate DB
+
+        SongAPI --> Axios : 200 {play_count: N}
+        deactivate SongAPI
+        Axios --> HomePage : data
+        deactivate Axios
+
+        HomePage -> HomePage : 更新播放计数显示\n开始播放音频 (Howler.js)
+    end
+end
+
+deactivate HomePage
+
+@enduml

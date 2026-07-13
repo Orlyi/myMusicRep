@@ -1,0 +1,369 @@
+@startuml myMusic-类图
+' ============================================================
+' myMusic 数据库 ORM 模型类图
+' 建模范围：全部 22 个 Model + 核心 Schema + 部分前端类型
+' ============================================================
+
+title myMusic 系统类图 —— ORM 数据模型 & Pydantic Schema
+
+' ────────────────────────────────────────────
+' 抽象基类
+' ────────────────────────────────────────────
+
+abstract class Base <<ORM 基类>> {
+    {abstract} DeclarativeBase
+}
+
+' ────────────────────────────────────────────
+' 1. 用户域 (User Domain)
+' ────────────────────────────────────────────
+
+class Users <<users 表>> {
+    + user_id : int <<PK, AI>>
+    + user_name : str(20)
+    + password : str(60)
+    + email : str(32) | None
+    + avatar_url : str(256) | None
+    + roles : str(20) = "user"
+    + current_status : int = 1
+    + create_time : datetime
+}
+
+class UserDetails <<user_details 表>> {
+    + user_id : int <<PK, FK→users>>
+    + nick_name : str(20) | None
+    + gender : Enum("男","女","其他")
+    + birthdate : date | None
+    + phone_number : str(20) | None
+    + real_name : str(20) | None
+    + city : str(20) | None
+    + fans_count : int = 0
+    + followed_count : int = 0
+    + create_time : datetime
+    + update_time : datetime
+}
+
+class UserFollowUser <<user_follow_user 表>> {
+    + fans_id : int <<PK, FK→users>>
+    + followed_id : int <<PK, FK→users>>
+    + create_time : datetime
+}
+
+class UserFollowArtist <<user_follow_artist 表>> {
+    + user_id : int <<PK, FK→users>>
+    + artist_id : int <<PK, FK→artists>>
+    + create_time : datetime
+}
+
+' ────────────────────────────────────────────
+' 2. 音乐内容域 (Music Content Domain)
+' ────────────────────────────────────────────
+
+class Artists <<artists 表>> {
+    + artist_id : int <<PK, AI>>
+    + platform_id : str(50) | None
+    + artist_name : str(50)
+    + songs_count : int = 0
+    + album_count : int = 0
+    + fans_count : int = 0
+    + introduction : Text | None
+    + current_status : int = 1
+    + create_time : datetime
+}
+
+class Songs <<songs 表>> {
+    + song_id : int <<PK, AI>>
+    + platform_id : str(200) | None
+    + song_name : str(200)
+    + artist_id : int | None
+    + album_id : int | None
+    + lyric_id : str(200) | None
+    + picture_id : str(200) | None
+    + picture_url : str(200) | None
+    + sources : str(50) | None
+    + url_id : str(200) | None
+    + introduction : Text | None
+    + download_url : str(500) | None
+    + download_count : int = 0
+    + play_count : int = 0
+    + current_status : int = 1
+    + create_time : datetime
+}
+
+class Albums <<albums 表>> {
+    + album_id : int <<PK, AI>>
+    + platform_id : str(50) | None
+    + artist_id : int | None <<FK→artists>>
+    + album_name : str(50)
+    + songs_count : int = 0
+    + current_status : int = 1
+    + create_time : datetime
+}
+
+class Lyrics <<lyrics 表>> {
+    + lyric_id : int <<PK, AI>>
+    + song_id : int <<FK→songs, CASCADE>>
+    + platform_id : str(200) | None
+    + lyric_text : LONGTEXT | None
+    + plain_lyric : Text | None
+    + create_time : datetime
+}
+
+' ────────────────────────────────────────────
+' 3. 关联表 (Join Tables)
+' ────────────────────────────────────────────
+
+class ArtistSingSong <<artist_sing_song 表>> {
+    + artist_id : int <<PK, FK→artists>>
+    + song_id : int <<PK, FK→songs>>
+    + create_time : datetime
+}
+
+class AlbumSaveSong <<album_save_song 表>> {
+    + album_id : int <<PK, FK→albums>>
+    + song_id : int <<PK, FK→songs>>
+    + create_time : datetime
+}
+
+class PlaylistSaveSong <<playlist_save_song 表>> {
+    + playlist_id : int <<PK, FK→playlists>>
+    + song_id : int <<PK, FK→songs>>
+    + create_time : datetime
+}
+
+' ────────────────────────────────────────────
+' 4. 用户交互域 (User Interaction Domain)
+' ────────────────────────────────────────────
+
+class Playlists <<playlists 表>> {
+    + playlist_id : int <<PK, AI>>
+    + playlist_name : str(32)
+    + user_id : int | None <<FK→users, SET NULL>>
+    + introduction : str(200) | None
+    + cover_url : str(500) | None
+    + songs_count : int = 0
+    + play_count : int = 0
+    + save_count : int = 0
+    + is_public : bool = false
+    + current_status : int = 1
+    + create_time : datetime
+}
+
+class UserSaveSong <<user_save_song 表>> {
+    + user_id : int <<PK, FK→users>>
+    + song_id : int <<PK, FK→songs>>
+    + create_time : datetime
+}
+
+class UserSaveAlbum <<user_save_album 表>> {
+    + user_id : int <<PK, FK→users>>
+    + album_id : int <<PK, FK→albums>>
+    + create_time : datetime
+}
+
+class UserSavePlaylist <<user_save_playlist 表>> {
+    + user_id : int <<PK, FK→users>>
+    + playlist_id : int <<PK, FK→playlists>>
+    + create_time : datetime
+}
+
+class Comments <<comments 表>> {
+    + comment_id : int <<PK, AI>>
+    + song_id : int | None <<FK→songs, CASCADE>>
+    + user_id : int | None <<FK→users, SET NULL>>
+    + content : str(1000) | None
+    + parent_id : int | None <<FK→comments, SET NULL>>
+    + root_id : int = 0
+    + like_count : int = 0
+    + reply_count : int = 0
+    + current_status : int = 1
+    + is_top : bool = false
+    + create_time : datetime
+}
+
+class UserLikeComment <<user_like_comment 表>> {
+    + user_id : int <<PK, FK→users>>
+    + comment_id : int <<PK, FK→comments>>
+    + create_time : datetime
+}
+
+class Messages <<messages 表>> {
+    + message_id : int <<PK, AI>>
+    + sender_id : int | None <<FK→users, SET NULL>>
+    + receiver_id : int | None <<FK→users, SET NULL>>
+    + content : str(1000)
+    + is_read : bool = false
+    + is_deleted_sender : bool = false
+    + is_deleted_receiver : bool = false
+    + sent_time : datetime
+    + read_time : datetime | None
+    + current_status : int = 1
+}
+
+' ────────────────────────────────────────────
+' 5. 历史记录域 (History Domain)
+' ────────────────────────────────────────────
+
+class PlayHistory <<play_history 表>> {
+    + play_id : int <<PK, AI>>
+    + user_id : int | None <<FK→users, SET NULL>>
+    + song_id : int | None <<FK→songs, CASCADE>>
+    + artist_id : int | None <<FK→artists, SET NULL>>
+    + playlist_id : int | None <<FK→playlists, SET NULL>>
+    + playlist_duration : int = 0
+    + is_completed : bool = true
+    + create_time : datetime
+}
+
+class SearchHistory <<search_history 表>> {
+    + search_id : int <<PK, AI>>
+    + user_id : int <<FK→users>>
+    + keyword : str(32) | None
+    + search_type : Enum("artist","song","lyric","album","playlist","user","other")
+}
+
+' ────────────────────────────────────────────
+' 6. Pydantic Schema（请求/响应 DTO）
+' ────────────────────────────────────────────
+
+class APIResponse <<统一响应>> {
+    + code : int = 200
+    + message : str = "OK"
+    + data : dict | list | None
+}
+
+class PaginatedResponse <<分页响应>> {
+    + items : list
+    + total : int
+    + page : int
+    + page_size : int
+}
+
+class UserLoginRequest <<请求>> {
+    + user_name : str
+    + password : str
+}
+
+class UserRegisterRequest <<请求>> {
+    + user_name : str(1..20)
+    + password : str(6..32)
+    + email : EmailStr | None
+    + avatar_url : str | None
+}
+
+class UserLoginResponse <<响应>> {
+    + token : str
+    + user_id : int
+    + user_name : str
+    + avatar_url : str | None
+    + roles : str
+}
+
+class UserBase <<响应>> {
+    + user_id : int
+    + user_name : str
+    + email : str | None
+    + avatar_url : str | None
+    + roles : str
+    + create_time : datetime
+    {method} from_attributes = True
+}
+
+class SongBase <<响应>> {
+    + song_id : int
+    + song_name : str
+    + artist_id : int | None
+    + album_id : int | None
+    + play_count : int
+    + download_count : int
+}
+
+' ────────────────────────────────────────────
+' 继承关系
+' ────────────────────────────────────────────
+
+Base <|-- Users
+Base <|-- UserDetails
+Base <|-- Artists
+Base <|-- Songs
+Base <|-- Albums
+Base <|-- Lyrics
+Base <|-- Playlists
+Base <|-- Comments
+Base <|-- Messages
+Base <|-- PlayHistory
+Base <|-- SearchHistory
+Base <|-- UserFollowUser
+Base <|-- UserFollowArtist
+Base <|-- UserSaveSong
+Base <|-- UserSaveAlbum
+Base <|-- UserSavePlaylist
+Base <|-- UserLikeComment
+Base <|-- ArtistSingSong
+Base <|-- PlaylistSaveSong
+Base <|-- AlbumSaveSong
+
+' ────────────────────────────────────────────
+' 关联关系 (ORM relationship / ForeignKey)
+' ────────────────────────────────────────────
+
+Users "1" -- "0..1" UserDetails : user_id\n(1:1, cascade)
+Users "1" -- "*" Playlists : user_id→创建
+Users "1" -- "*" Comments : user_id→发表
+
+' 自引用：用户关注用户
+Users "1" -- "*" UserFollowUser : fans_id
+Users "1" -- "*" UserFollowUser : followed_id
+
+' 用户关注歌手
+Users "1" -- "*" UserFollowArtist : user_id
+Artists "1" -- "*" UserFollowArtist : artist_id
+
+' 歌曲核心关联
+Songs "1" -- "0..1" Lyrics : song_id\n(1:1, cascade)
+Songs "*" -- "1" Artists : artist_id\n(简化，实际有独立关联表)
+Songs "*" -- "1" Albums : album_id\n(简化，实际有独立关联表)
+
+' 关联表 —— Artist ↔ Song
+Artists "1" -- "*" ArtistSingSong : artist_id
+Songs "1" -- "*" ArtistSingSong : song_id
+
+' 关联表 —— Album ↔ Song
+Albums "1" -- "*" AlbumSaveSong : album_id
+Songs "1" -- "*" AlbumSaveSong : song_id
+
+' 关联表 —— Playlist ↔ Song
+Playlists "1" -- "*" PlaylistSaveSong : playlist_id
+Songs "1" -- "*" PlaylistSaveSong : song_id
+
+' 用户收藏
+Users "1" -- "*" UserSaveSong : user_id
+Songs "1" -- "*" UserSaveSong : song_id
+
+Users "1" -- "*" UserSaveAlbum : user_id
+Albums "1" -- "*" UserSaveAlbum : album_id
+
+Users "1" -- "*" UserSavePlaylist : user_id
+Playlists "1" -- "*" UserSavePlaylist : playlist_id
+
+' 评论自引用：嵌套回复
+Comments "1" -- "0..*" Comments : parent_id\n(自引用树)
+
+' 评论点赞
+Users "1" -- "*" UserLikeComment : user_id
+Comments "1" -- "*" UserLikeComment : comment_id
+
+' 私信：sender 和 receiver 都指向 users
+Users "1" -- "*" Messages : sender_id
+Users "1" -- "*" Messages : receiver_id
+
+' 播放历史
+Users "1" -- "*" PlayHistory : user_id
+Songs "1" -- "*" PlayHistory : song_id
+Artists "1" -- "*" PlayHistory : artist_id
+Playlists "1" -- "*" PlayHistory : playlist_id
+
+' 搜索历史
+Users "1" -- "*" SearchHistory : user_id
+
+@enduml

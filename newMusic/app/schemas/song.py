@@ -6,19 +6,21 @@ class SongBase(BaseModel):
     song_id: int
     song_name: str
     artist_id: int | None = None
+    artist_name: str | None = None
     album_id: int | None = None
     picture_url: str | None = None
-    sources: str | None = None
+    source: str | None = None
     download_url: str | None = None
     download_count: int
     play_count: int
+    is_love: bool = False
 
     model_config = {"from_attributes": True}
 
 
 class SongDetail(SongBase):
     introduction: str | None = None
-    lyric_id: str | None = None
+    lyric_id: int | None = None
     create_time: datetime
 
 

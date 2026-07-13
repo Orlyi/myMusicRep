@@ -1,3 +1,6 @@
+
+
+
 html, body, #root {
     margin: 0;
     padding: 0;
@@ -6,6 +9,13 @@ html, body, #root {
 *{
     margin: 0;
     padding: 0;
+}
+
+
+
+a{
+    text-decoration: none;
+    color: black;
 }
 
 button{
@@ -22,13 +32,21 @@ button{
 }
 
 .app-layout{
-height: 100%;
+height: 100vh;
+overflow: hidden;
+}
+
+.main-content{
+flex: 1;
+overflow: auto;
+display: flex;
+flex-direction: column;
 }
 
 .nav{
     width: 100%;
     height: 10%;
-    background: antiquewhite;
+    background: #ffffff;
     display: flex;
     justify-content: space-around;
     position: fixed;
@@ -40,20 +58,76 @@ height: 100%;
         justify-content: center;
         align-items: center;
         font-size: 0.8em;
-        color: black;
+        color: #676767;
         text-decoration: none;
         font-weight: bold;
+
     }
+    a:hover{
+        color: black;
+    }
+}
+a.isAct{
+    color:black;
+}
+
+.Player{
+    height: 10%;
+    width: 100%;
+    position: fixed;
+    bottom: 10%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 820;
+}
+
+.Icon{
+    display: flex;
+    justify-content: space-between;
+    gap: 0.3em;
+}
+
+.queue{
+    .queue-overlay{
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 845;
+    }
+    .queue-drawer{
+        position: fixed;
+        top: 30%;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        border-radius: 12px 12px 0 0;
+        background:white;
+        z-index: 846;
+        pointer-events: none;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        box-sizing: border-box;
+        border-left: #9a9a9a solid 1px;
+        padding: 1em;
+        overflow: auto;
+    }
+
+}
+
+.flex{
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .top-nav{
-    position: relative;
     width: 100%;
     height: 10%;
-    background: rgba(114,114,114,0.3);
-    position: fixed;
-    top: 0;
+    background: rgb(255 255 255);
+    position: relative;
     display: flex;
+    flex-shrink: 0;
     button{
         height: 100%;
         width: 20%;
@@ -63,7 +137,7 @@ height: 100%;
     .top-nav-tab{
         height: 100%;
         width: 20%;
-        background: aliceblue;
+        background: #ffffff;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -86,7 +160,46 @@ height: 100%;
 }
 
 .larger_fontsize{
-    font-size: 1.2em;
+    font-size: 1.1em;
     font-weight: bold;
 }
 
+input {
+    background: transparent;
+    border: none;
+    outline: none;
+}
+input[type="range"] {
+    height: 6px;
+}
+.newChecked{
+    appearance: none;
+    -webkit-appearance: none;
+    width: 0.8em;
+    height: 0.8em;
+    border: 0.1em solid darkgray;
+    border-radius: 4px;
+    background: white   ;
+    transition: all 0.3s ease;
+    margin: 0;
+    padding: 0;
+}
+.newChecked:checked{
+    border-color: #6e6e6e;
+    background: #6e6e6e;
+}
+
+.error-font{
+    font-size: 0.8em;
+    color: brown;
+}
+
+.sidebar.open{
+    transform: translateX(0);
+}
+
+.queue-drawer.openY{
+    transform: translateY(0);
+    z-index: 846;
+    pointer-events: auto;
+}

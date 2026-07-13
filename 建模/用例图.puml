@@ -1,0 +1,305 @@
+@startuml myMusic-用例图
+' ============================================================
+' myMusic 系统用例图
+' 建模范围：全部用户角色 × 前端页面 × API 端点
+' ============================================================
+
+title myMusic 系统用例图
+
+' ────────────────────────────────────────────
+' 参与者 (Actors)
+' ────────────────────────────────────────────
+
+actor "普通用户\n(认证用户)" as User
+actor "游客\n(未认证用户)" as Guest
+actor "管理员" as Admin
+actor "音乐爬虫\n(定时脚本)" as Spider
+
+' ────────────────────────────────────────────
+' 系统边界
+' ────────────────────────────────────────────
+
+rectangle "myMusic 系统" {
+
+    ' ============================================================
+    ' 1. 认证模块 (Auth)
+    ' ============================================================
+
+    package "认证" {
+        usecase "注册账号" as UC_Register
+        usecase "登录" as UC_Login
+        usecase "登出" as UC_Logout
+        usecase "上传头像" as UC_UploadAvatar
+        usecase "自动登录\n(token 持久化)" as UC_AutoLogin
+    }
+
+    ' ============================================================
+    ' 2. 音乐浏览 (Browse)
+    ' ============================================================
+
+    package "音乐浏览" {
+        usecase "浏览歌曲列表\n(分页/热门)" as UC_BrowseSongs
+        usecase "查看歌曲详情" as UC_SongDetail
+        usecase "浏览歌手列表" as UC_BrowseArtists
+        usecase "查看歌手详情\n(歌曲+专辑)" as UC_ArtistDetail
+        usecase "浏览专辑列表" as UC_BrowseAlbums
+        usecase "查看专辑详情\n(含歌曲列表)" as UC_AlbumDetail
+        usecase "浏览歌单列表" as UC_BrowsePlaylists
+        usecase "查看歌单详情" as UC_PlaylistDetail
+    }
+
+    ' ============================================================
+    ' 3. 搜索 (Search)
+    ' ============================================================
+
+    package "搜索" {
+        usecase "搜索歌曲\n(按歌名)" as UC_SearchSong
+        usecase "搜索歌手\n(按歌手名)" as UC_SearchArtist
+        usecase "搜索专辑\n(按专辑名)" as UC_SearchAlbum
+        usecase "搜索歌词\n(全文匹配)" as UC_SearchLyric
+        usecase "查看搜索历史" as UC_SearchHistory
+    }
+
+    ' ============================================================
+    ' 4. 播放与下载 (Play & Download)
+    ' ============================================================
+
+    package "播放与下载" {
+        usecase "播放歌曲\n(Howler.js)" as UC_PlaySong
+        usecase "下载歌曲" as UC_DownloadSong
+        usecase "查看播放次数" as UC_PlayCount
+        usecase "查看下载次数" as UC_DownloadCount
+        usecase "查看播放历史" as UC_PlayHistory
+        usecase "获取歌词\n(原文+翻译)" as UC_GetLyric
+    }
+
+    ' ============================================================
+    ' 5. 收藏 (Favorites)
+    ' ============================================================
+
+    package "收藏" {
+        usecase "收藏歌曲" as UC_FavSong
+        usecase "收藏专辑" as UC_FavAlbum
+        usecase "收藏歌单" as UC_FavPlaylist
+        usecase "取消收藏" as UC_Unfav
+    }
+
+    ' ============================================================
+    ' 6. 歌单管理 (Playlist)
+    ' ============================================================
+
+    package "歌单管理" {
+        usecase "创建歌单" as UC_CreatePlaylist
+        usecase "编辑歌单\n(名称/简介/封面)" as UC_EditPlaylist
+        usecase "删除歌单" as UC_DeletePlaylist
+        usecase "添加歌曲到歌单" as UC_AddToPlaylist
+        usecase "设置歌单公开/私有" as UC_PublicPlaylist
+    }
+
+    ' ============================================================
+    ' 7. 社交互动 (Social)
+    ' ============================================================
+
+    package "社交互动" {
+        usecase "关注歌手" as UC_FollowArtist
+        usecase "取消关注歌手" as UC_UnfollowArtist
+        usecase "关注用户" as UC_FollowUser
+        usecase "取消关注用户" as UC_UnfollowUser
+        usecase "发表评论" as UC_AddComment
+        usecase "回复评论\n(嵌套楼中楼)" as UC_ReplyComment
+        usecase "点赞评论" as UC_LikeComment
+        usecase "删除评论" as UC_DeleteComment
+    }
+
+    ' ============================================================
+    ' 8. 私信 (Messages)
+    ' ============================================================
+
+    package "私信" {
+        usecase "发送私信" as UC_SendMsg
+        usecase "查看收件箱" as UC_Inbox
+        usecase "查看已发送" as UC_SentMsg
+        usecase "标记已读" as UC_ReadMsg
+        usecase "删除消息\n(软删除)" as UC_DeleteMsg
+    }
+
+    ' ============================================================
+    ' 9. 个人中心 (Profile)
+    ' ============================================================
+
+    package "个人中心" {
+        usecase "查看个人资料" as UC_ViewProfile
+        usecase "编辑个人资料\n(昵称/性别/生日等)" as UC_EditProfile
+        usecase "查看注册时长" as UC_RegDuration
+        usecase "查看我的歌单" as UC_MyPlaylists
+        usecase "查看我的收藏" as UC_MyFavorites
+    }
+
+    ' ============================================================
+    ' 10. 管理 (Admin)
+    ' ============================================================
+
+    package "后台管理" {
+        usecase "歌曲上下架\n(current_status)" as UC_ManageSong
+        usecase "评论管理\n(隐藏/置顶)" as UC_ManageComment
+        usecase "用户管理\n(角色/状态)" as UC_ManageUser
+    }
+
+    ' ============================================================
+    ' 11. 数据采集 (Data Collection)
+    ' ============================================================
+
+    package "数据采集" {
+        usecase "爬取音乐数据\n(music_spider)" as UC_SpiderMusic
+        usecase "爬取歌词\n(lyric_spider)" as UC_SpiderLyric
+        usecase "爬取搜索结果\n(search_spider)" as UC_SpiderSearch
+        usecase "写入 MySQL 数据库" as UC_WriteDB
+    }
+
+}
+
+' ────────────────────────────────────────────
+' 参与者与用例的关系
+' ────────────────────────────────────────────
+
+' --- 游客 (未认证用户) ---
+Guest --> UC_Register
+Guest --> UC_Login
+Guest --> UC_BrowseSongs
+Guest --> UC_SongDetail
+Guest --> UC_BrowseArtists
+Guest --> UC_ArtistDetail
+Guest --> UC_BrowseAlbums
+Guest --> UC_AlbumDetail
+Guest --> UC_BrowsePlaylists
+Guest --> UC_PlaylistDetail
+Guest --> UC_SearchSong
+Guest --> UC_SearchArtist
+Guest --> UC_SearchAlbum
+Guest --> UC_SearchLyric
+Guest --> UC_PlayCount
+Guest --> UC_DownloadCount
+Guest --> UC_GetLyric
+
+' --- 普通用户 (继承游客所有用例 + 更多) ---
+User --|> Guest : 继承
+
+User --> UC_Logout
+User --> UC_AutoLogin
+User --> UC_UploadAvatar
+User --> UC_PlaySong
+User --> UC_DownloadSong
+User --> UC_PlayHistory
+User --> UC_FavSong
+User --> UC_FavAlbum
+User --> UC_FavPlaylist
+User --> UC_Unfav
+User --> UC_CreatePlaylist
+User --> UC_EditPlaylist
+User --> UC_DeletePlaylist
+User --> UC_AddToPlaylist
+User --> UC_PublicPlaylist
+User --> UC_FollowArtist
+User --> UC_UnfollowArtist
+User --> UC_FollowUser
+User --> UC_UnfollowUser
+User --> UC_AddComment
+User --> UC_ReplyComment
+User --> UC_LikeComment
+User --> UC_DeleteComment
+User --> UC_SendMsg
+User --> UC_Inbox
+User --> UC_SentMsg
+User --> UC_ReadMsg
+User --> UC_DeleteMsg
+User --> UC_ViewProfile
+User --> UC_EditProfile
+User --> UC_RegDuration
+User --> UC_MyPlaylists
+User --> UC_MyFavorites
+User --> UC_SearchHistory
+
+' --- 管理员 (继承用户所有用例 + 管理用例) ---
+Admin --|> User : 继承
+
+Admin --> UC_ManageSong
+Admin --> UC_ManageComment
+Admin --> UC_ManageUser
+
+' --- 音乐爬虫 (独立参与者) ---
+Spider --> UC_SpiderMusic
+Spider --> UC_SpiderLyric
+Spider --> UC_SpiderSearch
+
+' ────────────────────────────────────────────
+' 用例间的关系
+' ────────────────────────────────────────────
+
+' 播放时自动记录历史
+UC_PlaySong ..> UC_PlayHistory : <<extend>>\n播放时自动记录
+UC_SearchSong ..> UC_SearchHistory : <<extend>>\n搜索时自动记录
+
+' 回复评论继承发表评论
+UC_ReplyComment --|> UC_AddComment : <<extend>>\n带 parent_id
+
+' 查看播放/下载次数是歌曲详情的一部分
+UC_PlayCount ..> UC_SongDetail : <<include>>\n可选
+UC_DownloadCount ..> UC_SongDetail : <<include>>\n可选
+
+' 歌词从歌曲详情获取
+UC_GetLyric ..> UC_SongDetail : <<include>>
+
+' 创建歌单需要验证身份
+UC_CreatePlaylist ..> UC_Login : <<precede>>
+
+' 爬虫写入
+UC_SpiderMusic ..> UC_WriteDB : <<include>>
+UC_SpiderLyric ..> UC_WriteDB : <<include>>
+UC_SpiderSearch ..> UC_WriteDB : <<include>>
+
+' ────────────────────────────────────────────
+' 注释
+' ────────────────────────────────────────────
+
+note right of Guest
+  <b>游客权限</b>
+  ✓ 浏览音乐内容（歌曲/歌手/专辑/歌单）
+  ✓ 搜索（歌名/歌手/专辑/歌词）
+  ✓ 查看播放/下载次数
+  ✓ 获取歌词
+  ✗ 播放/下载（需登录）
+  ✗ 社交功能（需登录）
+end note
+
+note right of User
+  <b>普通用户权限</b>
+  继承全部游客权限 +
+  ✓ 播放歌曲、下载歌曲
+  ✓ 收藏（歌曲/专辑/歌单）
+  ✓ 歌单 CRUD
+  ✓ 关注（歌手/用户）
+  ✓ 评论、回复、点赞
+  ✓ 私信
+  ✓ 个人资料管理
+end note
+
+note left of Admin
+  <b>管理员权限</b>
+  继承全部用户权限 +
+  ✓ 歌曲上下架管理
+  ✓ 评论审核/置顶
+  ✓ 用户角色/状态管理
+end note
+
+note bottom of Spider
+  <b>爬虫系统</b>
+  独立 Python 脚本，无 Web API 调用。
+  通过 SQLAlchemy 直连 MySQL
+  写入音乐/歌词/搜索结果数据
+  ─────────────────
+  • music_spider.py —— 爬取歌曲
+  • lyric_spider.py —— 爬取歌词
+  • search_sprider.py —— 搜索爬取
+end note
+
+@enduml

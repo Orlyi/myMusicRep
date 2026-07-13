@@ -3,7 +3,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models import Users, UserSaveSong, Songs, UserSavePlaylist, UserSaveAlbum, Playlists, Albums
+from app.models import Users, UserSaveSong, Songs, UserSavePlaylist, UserSaveAlbum, Playlists, Albums, Artists
 from app.schemas.common import APIResponse, PaginatedResponse
 from app.schemas.favorite import FavoriteSongResponse, FavoritePlaylistResponse, FavoriteAlbumResponse
 
@@ -76,8 +76,9 @@ async def list_favorites(
         db: AsyncSession = Depends(get_db)):
     if type == "song":
         base = (
-            select(Songs.song_id, Songs.song_name, Songs.artist_id, Songs.album_id, Songs.picture_url, UserSaveSong.create_time)
+            select(Songs.song_id, Songs.song_name, Songs.artist_id, Songs.album_id, Songs.picture_url, UserSaveSong.create_time, Artists.artist_name)
             .join(UserSaveSong, Songs.song_id==UserSaveSong.song_id)
+            .outerjoin(Artists, Songs.artist_id == Artists.artist_id)
             .where(UserSaveSong.user_id == current_user.user_id)
         )
         count_base = (
@@ -99,6 +100,7 @@ async def list_favorites(
                 song_id=row.song_id,
                 song_name=row.song_name,
                 artist_id=row.artist_id,
+                artist_name=row.artist_name or "",
                 album_id=row.album_id,
                 picture_url=row.picture_url,
                 create_time=row.create_time

@@ -1,0 +1,168 @@
+@startuml myMusic-状态图
+' ============================================================
+' myMusic 核心对象状态图
+' 建模对象：用户认证、歌曲、评论、消息、前端路由
+' ============================================================
+
+title myMusic 系统状态图
+
+' ============================================================
+' 1. 用户认证状态（前端 + 后端）
+' ============================================================
+
+state "用户认证生命周期" as AuthState {
+    [*] --> 未登录 : 首次访问
+
+    未登录 --> 登录中 : 输入凭证\n点击登录
+    未登录 --> 注册中 : 点击注册链接
+
+    注册中 --> 注册中 : 填写表单
+    注册中 --> 未登录 : 注册成功\nPOST /auth/register → 200
+    注册中 --> 注册中 : 校验失败\n(用户名重复/格式错误)
+
+    登录中 --> 登录中 : 发送请求\nPOST /auth/login
+    登录中 --> 已登录 : 登录成功\n200 {token, user}
+    登录中 --> 未登录 : 401 认证失败\n显示错误信息
+    登录中 --> 未登录 : 网络异常
+
+    已登录 --> 已登录 : 访问受保护页面\nuseAuth 校验通过
+    已登录 --> 已登录 : API 调用\nAxios 拦截器注入 Bearer Token
+
+    已登录 --> 未登录 : Token 过期\n401 → 拦截器清除token → navigate(/login)
+    已登录 --> 未登录 : 主动登出\nlogout() → 清除 Storage → navigate(/login)
+    state 已登录 {
+        [*] --> 浏览中
+        浏览中 --> 播放中 : 点击歌曲
+        播放中 --> 浏览中 : 停止/切歌
+        浏览中 --> 搜索中 : 输入搜索词
+        搜索中 --> 浏览中 : 查看结果/返回
+    }
+}
+
+' ============================================================
+' 2. 歌曲状态（current_status 字段）
+' ============================================================
+
+state "歌曲生命周期" as SongState {
+    [*] --> 正常上架 : current_status = 1\n(默认，可播放可搜索)
+
+    state 正常上架 {
+        [*] --> 待播放
+        待播放 --> 播放中 : POST /songs/:id/play
+        播放中 --> 播放完成 : is_completed=true\n写入 play_history
+        播放中 --> 播放中断 : is_completed=false
+        播放完成 --> 待播放 : 再次播放
+        播放中断 --> 待播放 : 再次播放
+
+        待播放 --> 下载中 : POST /songs/:id/download
+        下载中 --> 下载完成 : download_count += 1
+        下载完成 --> 待播放
+    }
+
+    正常上架 --> 下架 : current_status = 0\n(管理员操作/版权问题)
+    下架 --> 正常上架 : current_status = 1\n(重新上架)
+    下架 --> [*] : 物理删除 (极少)
+}
+
+' ============================================================
+' 3. 评论状态
+' ============================================================
+
+state "评论生命周期" as CommentState {
+    [*] --> 正常显示 : current_status = 1
+
+    state 正常显示 {
+        [*] --> 未被置顶 : is_top = false
+        未被置顶 --> 被置顶 : is_top = true\n(管理员/UP主操作)
+        被置顶 --> 未被置顶 : 取消置顶
+
+        [*] --> 无回复 : reply_count = 0
+        无回复 --> 有回复 : 其他用户回复\nreply_count += 1
+        有回复 --> 有回复 : reply_count 递增
+
+        [*] --> 无人点赞 : like_count = 0
+        无人点赞 --> 有人点赞 : 用户点赞\n(user_like_comment 插入)
+        有人点赞 --> 有人点赞 : like_count 递增
+        有人点赞 --> 有人点赞 : 取消点赞\nlike_count 递减
+    }
+
+    正常显示 --> 被隐藏 : current_status = 0\n(违规/举报)
+    被隐藏 --> 正常显示 : current_status = 1\n(申诉恢复)
+}
+
+' ============================================================
+' 4. 私信消息状态
+' ============================================================
+
+state "私信消息生命周期" as MsgState {
+    [*] --> 已发送 : INSERT INTO messages
+
+    已发送 --> 未读 : is_read = false
+
+    state 双方可见 {
+        未读 --> 已读 : 接收方查看\nis_read = true,\nread_time = now()
+
+        未读 --> 发送方删除 : is_deleted_sender = true
+        未读 --> 接收方删除 : is_deleted_receiver = true
+        已读 --> 发送方删除 : is_deleted_sender = true
+        已读 --> 接收方删除 : is_deleted_receiver = true
+    }
+
+    发送方删除 --> 双方都删除 : 接收方也删除
+    接收方删除 --> 双方都删除 : 发送方也删除
+
+    已发送 --> 硬删除 : sender 在5分钟内\nDELETE (物理删除)
+    发送方删除 --> 硬删除
+    接收方删除 --> 硬删除
+
+    双方都删除 --> [*]
+    硬删除 --> [*]
+}
+
+' ============================================================
+' 5. 歌单状态
+' ============================================================
+
+state "歌单生命周期" as PlaylistState {
+    [*] --> 私有 : is_public = false\n(用户创建，仅自己可见)
+    私有 --> 公开 : is_public = true\n(发布分享)
+    公开 --> 私有 : is_public = false\n(取消分享)
+    私有 --> 已删除 : current_status = 0
+    公开 --> 已删除 : current_status = 0
+    已删除 --> [*]
+}
+
+' ============================================================
+' 6. 前端路由状态转移（React Router）
+' ============================================================
+
+state "前端路由状态机" as RouterState {
+    [*] --> 公开页面
+
+    state 公开页面 {
+        state "/login" as Login
+        state "/register" as Register
+    }
+
+    state 需认证页面 {
+        state "/ (首页)" as Home
+        state "/search" as Search
+        state "/song/:id" as SongDetail
+        state "/artist/:id" as ArtistDetail
+        state "/album/:id" as AlbumDetail
+        state "/playlist/:id" as PlaylistDetail
+        state "/library" as Library
+        state "/messages" as Messages
+        state "/profile" as Profile
+        state "/profile/detail" as ProfileDetail
+    }
+
+    Login --> Register : Link to
+    Register --> Login : Link to
+    Login --> Home : 登录成功后 navigate("/")
+
+    需认证页面 --> Login : useAuth 检测无 token\nnavigate("/login", {state:{from}})
+    Login --> 需认证页面 : navigate(from) 回到原目标页
+}
+
+@enduml

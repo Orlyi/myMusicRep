@@ -5,6 +5,8 @@ class AlbumBase(BaseModel):
     album_id: int
     album_name: str
     artist_id: int | None = None
+    cover_url: str | None = None
+    source: str | None = None
     songs_count: int
 
     model_config = {"from_attributes": True}

@@ -1,0 +1,126 @@
+@startuml 用户登录并播放歌曲-通信图
+' ============================================================
+' 场景：用户登录、浏览歌曲、播放歌曲的通信图
+' 注重对象之间的链接和消息传递
+' ============================================================
+
+title myMusic 系统通信图 —— 用户登录并播放歌曲
+
+' ----- 节点定义 -----
+
+actor "用户\n(User)" as User
+
+rectangle "React 前端" as Web {
+    component "LoginPage" as LP
+    component "HomePage" as HP
+    component "useAuth\n(Hook)" as AuthHook
+    component "Axios Client\n(拦截器)" as Axios
+}
+
+rectangle "FastAPI 后端" as Backend {
+    component "/auth\n(认证模块)" as AuthMod
+    component "AuthMiddleware\n(get_current_user)" as MW
+    component "/songs\n(歌曲模块)" as SongMod
+    component "security.py\n(JWT+bcrypt)" as SecUtils
+}
+
+database "MySQL" as DB {
+    folder "users 表" as T_Users
+    folder "songs 表" as T_Songs
+    folder "play_history 表" as T_History
+}
+
+' ----- 链接关系 -----
+
+User -- LP : 交互
+User -- HP : 交互
+LP -[hidden]-> HP
+
+LP -right-> Axios : HTTP请求
+HP -right-> Axios : HTTP请求
+
+AuthHook -- HP : 路由守卫
+
+Axios -- AuthMod : POST /auth/login\nPOST /auth/register\nGET /auth/me
+Axios -- SongMod : GET /songs\nGET /songs/:id\nPOST /songs/:id/play
+Axios .. MW : Bearer Token\n(请求拦截器注入)
+
+MW -- SecUtils : decode_access_token()
+AuthMod -- SecUtils : hash_password()\nverify_password()\ncreate_access_token()
+
+AuthMod -- T_Users : 读写
+MW -- T_Users : 查询
+SongMod -- T_Songs : 读写
+SongMod -- T_History : 写入
+
+' ============================================================
+' 场景1：登录流程
+' ============================================================
+
+note as N1
+  <b>场景1：登录</b>
+  ① 用户输入凭证 → LoginPage
+  ② LoginPage 前端校验非空
+  ③ Axios POST /auth/login
+  ④ AuthMod 查 users 表验证身份
+  ⑤ security.py bcrypt 验密 + JWT 签发
+  ⑥ 返回 token → Axios 拦截器自动解析
+  ⑦ LoginPage 存入 localStorage/sessionStorage
+  ⑧ navigate("/") 跳转首页
+end note
+
+' ============================================================
+' 场景2：路由守卫
+' ============================================================
+
+note as N2
+  <b>场景2：路由守卫</b>
+  ① 页面切换触发 useAuth Hook
+  ② 读取 localStorage/sessionStorage 中的 token
+  ③ 有 token → 允许渲染
+  ④ 无 token 且非公开页面 → navigate("/login")
+end note
+
+' ============================================================
+' 场景3：浏览歌曲列表
+' ============================================================
+
+note as N3
+  <b>场景3：浏览歌曲列表</b>
+  ① HomePage 挂载 → Axios GET /songs?page=1
+  ② Axios 请求拦截器注入 Bearer token
+  ③ SongMod 查询 songs 表 (current_status=1)
+  ④ 返回分页列表 → HomePage 渲染
+end note
+
+' ============================================================
+' 场景4：播放歌曲
+' ============================================================
+
+note as N4
+  <b>场景4：播放歌曲</b>
+  ① 用户点击播放 → Axios POST /songs/:id/play
+  ② Axios 注入 Bearer token
+  ③ AuthMiddleware 拦截 → security.py 解码 JWT
+  ④ MW 查 users 表确认用户存在
+  ⑤ 认证通过 → SongMod 执行业务逻辑
+  ⑥ SongMod 更新 songs.play_count += 1
+  ⑦ SongMod 写入 play_history 记录
+  ⑧ 返回播放计数 → HomePage 更新 UI
+end note
+
+' ============================================================
+' 场景5：私信
+' ============================================================
+
+note as N5
+  <b>场景5：私信（通信路径示意）</b>
+  ① 发送方 → Axios POST /message {receiver_id, content}
+  ② AuthMiddleware 认证发送方身份
+  ③ MessageMod 校验 receiver 存在 & 非自己
+  ④ 写入 messages 表
+  ⑤ 接收方 → Axios GET /message/received
+  ⑥ 返回收件箱分页列表
+end note
+
+@enduml

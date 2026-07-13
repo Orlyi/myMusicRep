@@ -107,7 +107,7 @@ async def list_messages(
 
 
 @router.delete("/{message_id}", response_model=APIResponse)
-async def delete_message(
+async def delete_message_soft(
         message_id: int,
         current_user: Users = Depends(get_current_user),
         db: AsyncSession = Depends(get_db)):
@@ -126,7 +126,7 @@ async def delete_message(
     return APIResponse(message="Deleted for yourself successfully")
 
 @router.delete("/{message_id}", response_model=APIResponse)
-async def delete_message(
+async def delete_message_hard(
       message_id: int,
       current_user: Users = Depends(get_current_user),
       db: AsyncSession = Depends(get_db)):

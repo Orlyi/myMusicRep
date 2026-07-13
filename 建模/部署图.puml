@@ -1,0 +1,161 @@
+@startuml myMusic-部署图
+' ============================================================
+' myMusic 部署图
+' 建模范围：开发环境 → 生产环境规划 → 移动端打包
+' ============================================================
+
+title myMusic 系统部署图
+
+' ────────────────────────────────────────────
+' 开发环境 (当前)
+' ────────────────────────────────────────────
+
+node "开发者笔记本 (Windows 11)" as DevMachine {
+    rectangle "Git 工作区" as Git {
+        usecase "master 分支" as Master
+        usecase "GitHub Remote\nhttps://github.com/Orlyi/myMusicRep" as GitHub
+    }
+
+    node "WebStorm / VS Code" as IDE
+
+    rectangle "爬虫数据源" as SpidersNode {
+        component "music_spider.py\n(音乐爬取)" as Spider1
+        component "lyric_spider.py\n(歌词爬取)" as Spider2
+        component "search_sprider.py\n(搜索爬取)" as Spider3
+        database "music/\n(本地音乐文件)" as LocalMusic
+    }
+
+    node "web/ (React SPA)\nVite Dev Server\nlocalhost:5173" as WebDev {
+        component "React 19\nReact Router v7" as ReactApp
+        component "Zustand\n(stores)" as Zustand
+        component "Howler.js\n(音频播放)" as Howler
+        component "Axios Client\n(拦截器)" as AxiosClient
+    }
+
+    node "newMusic/ (FastAPI)\nUvicorn\nlocalhost:8000" as APIDev {
+        component "FastAPI\n13 个路由模块" as FastAPIApp
+        component "JWT Auth\n(bcrypt + jose)" as JWT
+        component "StaticFiles\n(/static → uploads/)" as StaticSvr
+        component "Swagger /docs\n(自动生成)" as Swagger
+    }
+
+    database "MySQL (本地)\nlocalhost:3306\nmyMusic 库" as MySQLDev {
+        frame "22 张表" as AllTables {
+            collections "users 域" as T1
+            collections "music 域" as T2
+            collections "interaction 域" as T3
+            collections "history 域" as T4
+        }
+    }
+
+    database "uploads/\n(头像等静态文件)" as UploadsDir
+}
+
+' 开发环境通信
+Master --> GitHub : git push/pull
+SpidersNode --> MySQLDev : 爬取 → 写入数据
+WebDev --> APIDev : HTTP REST\nCORS *
+ReactApp --> AxiosClient : 前端调用
+AxiosClient --> APIDev : baseURL localhost:8000
+APIDev --> MySQLDev : asyncmy\nSQLAlchemy 2.0 async
+APIDev --> UploadsDir : 读写文件
+FastAPIApp --> StaticSvr : 挂载 /static
+FastAPIApp --> Swagger : /docs 端点
+JWT --> FastAPIApp : Depends→get_current_user
+
+' ────────────────────────────────────────────
+' 生产环境规划 (虚线)
+' ────────────────────────────────────────────
+
+cloud "云服务器 (规划中)" as Cloud {
+    node "Linux Server" as ProdServer {
+        node "Nginx (反向代理)" as Nginx {
+
+        }
+
+        node "Docker Compose 编排" as Docker {
+            node "web 容器\n(nginx:alpine)" as WebProd {
+                artifact "Vite Build\n(dist/ 静态文件)" as BuildArtifact
+            }
+
+            node "newMusic 容器\n(python:3.12)" as APIProd {
+                component "FastAPI\n(生产模式)" as FastAPIProd
+                component "Gunicorn +\nUvicorn Workers" as Gunicorn
+            }
+
+            database "MySQL 容器\n(mysql:8.0)" as MySQLProd
+
+            node "Capacitor 打包\n(Android APK)" as Capacitor {
+                artifact "web/ build\n→ Android APK" as APK
+            }
+        }
+    }
+}
+
+Nginx --> WebProd : static files (/)
+Nginx --> APIProd : /api/* proxy_pass
+APIProd --> MySQLProd : asyncmy
+FastAPIProd --> Gunicorn : 多 worker
+
+' 移动端
+node "Android 设备" as Android {
+    artifact "myMusic.apk" as APKFile
+    component "Capacitor WebView" as WebView
+}
+
+Capacitor --> APKFile : 构建产出
+APKFile --> Android : 安装
+WebView --> FastAPIProd : HTTP API\n(同 web 端)
+
+' ────────────────────────────────────────────
+' 技术栈标注
+' ────────────────────────────────────────────
+
+note right of Docker
+  <b>生产环境技术栈</b>
+  • 反向代理：Nginx
+  • 容器编排：Docker Compose
+  • 前端部署：nginx:alpine 静态服务
+  • 后端部署：Gunicorn + Uvicorn Workers
+  • 数据库：MySQL 8.0
+  • 移动端：Capacitor (开源 MIT)
+  • CI/CD：(待定)
+end note
+
+note left of WebDev
+  <b>前端技术栈</b>
+  • React 19 + Vite 8
+  • React Router v7
+  • Axios 1.18
+  • Howler.js 2.2
+  • Lucide React 1.21
+  • Zustand (规划中)
+end note
+
+note left of APIDev
+  <b>后端技术栈</b>
+  • FastAPI + Uvicorn
+  • SQLAlchemy 2.0 async
+  • asyncmy (MySQL 驱动)
+  • Alembic (数据迁移)
+  • JWT + bcrypt
+  • Pydantic v2
+end note
+
+note bottom of MySQLDev
+  <b>22 张数据表</b>
+  ─────────────────
+  <b>核心数据 (5)</b>：users, user_details,
+  artists, songs, lyrics
+  <b>聚合实体 (2)</b>：albums, playlists
+  <b>关联表 (3)</b>：artist_sing_song,
+  album_save_song, playlist_save_song
+  <b>用户交互 (6)</b>：comments, messages,
+  user_save_song, user_save_album,
+  user_save_playlist, user_like_comment
+  <b>社交 (2)</b>：user_follow_user,
+  user_follow_artist
+  <b>历史 (2)</b>：play_history, search_history
+end note
+
+@enduml

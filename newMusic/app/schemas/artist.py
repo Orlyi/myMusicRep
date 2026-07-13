@@ -5,9 +5,11 @@ from pydantic import BaseModel,Field
 class ArtistBase(BaseModel):
     artist_id: int
     artist_name: str
-    songs_count:int
-    album_count:int
-    fans_count:int
+    avartar_url: str | None = None
+    source: str | None = None
+    songs_count: int
+    album_count: int
+    fans_count: int
 
     model_config = {"from_attributes": True}
 

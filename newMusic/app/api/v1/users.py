@@ -5,8 +5,8 @@ from app.core.deps import get_current_user
 from app.core.database import get_db
 from app.models import Users, UserDetails, Songs, PlayHistory
 from app.schemas.common import APIResponse, PaginatedResponse
-from app.schemas.user import UserRegisterRequest, UserLoginRequest, UserBase, UserDetailResponse, UserDetailsRequest
-from datetime import  datetime, timezone
+from app.schemas.user import UserBase, UserDetailResponse, UserDetailsRequest
+from datetime import datetime
 
 router = APIRouter()
 
@@ -21,8 +21,12 @@ async def get_my_info(
         .where(UserDetails.user_id == current_user.user_id)
     )
     details = result.scalar_one_or_none()
+
+    # 如果没有 details 记录，自动创建
     if not details:
-        return APIResponse(code=404, message="User detail not found")
+        details = UserDetails(user_id=current_user.user_id)
+        db.add(details)
+        await db.flush()
 
     return APIResponse(
         data={"user": UserBase.model_validate(current_user).model_dump(),

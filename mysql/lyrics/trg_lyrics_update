@@ -1,0 +1,41 @@
+
+
+  DROP FUNCTION IF EXISTS strip_lrc_timestamps;
+
+  DELIMITER $$
+
+  CREATE FUNCTION strip_lrc_timestamps(lrc_text LONGTEXT) RETURNS TEXT
+      DETERMINISTIC
+      NO SQL
+  RETURN REGEXP_REPLACE(
+      REGEXP_REPLACE(lrc_text, '\\[\\d{2}:\\d{2}\\.\\d{2,3}\\] *', ''),
+      '\n +', '\n'
+  );
+
+  $$
+
+  DELIMITER 
+
+  -- 插入时自动生成 plain_lyric
+  CREATE TRIGGER trg_lyrics_insert
+      BEFORE INSERT ON lyrics
+      FOR EACH ROW
+  BEGIN
+      IF NEW.lyric_text IS NOT NULL AND NEW.lyric_text != '' THEN
+          SET NEW.plain_lyric = strip_lrc_timestamps(NEW.lyric_text);
+      END IF;
+  END$$
+
+  -- 更新时同步
+  CREATE TRIGGER trg_lyrics_update
+      BEFORE UPDATE ON lyrics
+      FOR EACH ROW
+  BEGIN
+      IF NEW.lyric_text IS NOT NULL AND NEW.lyric_text != '' THEN
+          SET NEW.plain_lyric = strip_lrc_timestamps(NEW.lyric_text);
+      ELSE
+          SET NEW.plain_lyric = NULL;
+      END IF;
+  END$$
+
+  DELIMITER ;

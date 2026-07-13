@@ -9,8 +9,7 @@ from app.models.base import Base
 class UserDetails(Base):
     __tablename__ = "user_details"
 
-    detail_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
     nick_name: Mapped[str | None] = mapped_column(String(20), default="")
     gender: Mapped[str | None] = mapped_column(Enum("男", "女", "其他"), default="其他")
     birthdate: Mapped[date | None] = mapped_column(Date, default="2026-05-20")

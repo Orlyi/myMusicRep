@@ -3,11 +3,13 @@ from pydantic import BaseModel, EmailStr, Field
 
 class UserRegisterResponse(BaseModel):
     user_id: int
+    avatar_url: str | None = None
 
 class UserRegisterRequest(BaseModel):
     user_name: str = Field(min_length=1, max_length=20)
     password: str = Field(min_length=6, max_length=32)
     email: EmailStr | None = None
+    avatar_url: str | None = None
 
 
 class UserLoginRequest(BaseModel):
@@ -17,14 +19,16 @@ class UserLoginRequest(BaseModel):
 class UserLoginResponse(BaseModel):
     token: str
     user_id: int
-    user_name:str
-    roles:str
+    user_name: str
+    avatar_url: str | None = None
+    roles: str
 
 
 class UserBase(BaseModel):
     user_id: int
     user_name: str
     email: str | None = None
+    avatar_url: str | None = None
     roles: str
     create_time: datetime
 
@@ -43,13 +47,7 @@ class UserDetailResponse(BaseModel):
     gender: str | None = None
     birthdate: date | None = None
     city: str | None = None
-    fans_count: int
-    followed_count: int
+    fans_count: int = 0
+    followed_count: int = 0
 
     model_config = {"from_attributes": True}
-
-
-
-
-
-

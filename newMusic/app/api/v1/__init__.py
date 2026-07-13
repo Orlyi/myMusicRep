@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import health, users, songs, auth, artists, albums, lyric, favorites, comments, playlists, search, follow, message
+from app.api.v1 import health, users, songs, auth, artists, albums, lyric, favorites, comments, playlists, search, follow, message, network_search
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(health.router, tags=["Health"])
@@ -16,3 +16,4 @@ router.include_router(playlists.router, prefix="/playlists", tags=["Playlists"])
 router.include_router(search.router, prefix="/search", tags=["Search"])
 router.include_router(follow.router, prefix="/follow", tags=["Follow"])
 router.include_router(message.router, prefix="/message", tags=["Message"])
+router.include_router(network_search.router, prefix="/network", tags=["Network Search"])

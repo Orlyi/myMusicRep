@@ -1,0 +1,7 @@
+- [About Orly](about-orly.md) — Who Orly is: solo full-stack dev, FastAPI + React 19, prefers plain CSS, structured planning, Chinese docs OK
+- [Project Overview](project-overview.md) — myMusic 在线音乐平台：整体架构、目录结构、技术栈总览
+- [Backend Structure](backend-structure.md) — FastAPI 后端完整结构：路由、模型、schemas、数据库配置
+- [Frontend Structure](frontend-structure.md) — React 前端完整结构：页面、组件、路由、API 层、hooks
+- [Database Schema](database-schema.md) — 数据库表结构：21 个表（实体表 + 关联表）、关键字段、关系说明
+- [API Architecture](api-architecture.md) — API 设计规范：响应格式、分页、认证、所有端点列表
+- [Spiders & Data](spiders-and-data.md) — 爬虫脚本：数据来源（yinyueku.cn）、API 调用方式

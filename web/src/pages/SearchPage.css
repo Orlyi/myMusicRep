@@ -1,0 +1,131 @@
+
+.search-bar{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+    margin-bottom: 1em;
+    margin-top:1em;
+
+}
+
+
+
+.search{
+    background-color: #e5e5e5;
+    width: 80vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2em;
+}
+.search-content{
+    flex: 1;
+    height: 100%;
+    color: #000000;
+    margin-left: 0.3em;
+}
+
+.cancel{
+    height: 5vh;
+    width: 15vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.source{
+    width: 2em;
+    display: flex;
+    flex-direction: column;
+    margin: 0 0.8em 0 0.8em;
+}
+.search-type{
+    width: 100%;
+    margin-bottom: 1em;
+}
+
+.types{
+    display: flex;
+    flex: 1;
+}
+
+.type{
+    flex: 1;
+    flex-direction: column;
+}
+
+.type-active{
+    color: #5aa0ff;
+}
+
+.type-active .small-font{
+    color: #5aa0ff;
+}
+
+.WY{
+    color: #ff3c3c;
+}
+.WY .small-font{
+    color: #ff3c3c;
+}
+
+.QQ{
+    color: #1db954;
+}
+.QQ .small-font{
+    color: #1db954;
+}
+
+.small-font{
+    font-weight: bolder;
+    text-align: center;
+    font-size: 0.5em;
+    color: #6e6e6e;
+}
+
+.search-results{
+    width: 100%;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.loading{
+    text-align: center;
+    padding: 2em;
+    color: #888;
+}
+
+.empty{
+    text-align: center;
+    padding: 2em;
+    color: #999;
+}
+
+.search-artist{
+    display: flex;
+    align-items: center;
+    gap: 0.8em;
+    padding: 0.6em 1em;
+}
+
+.search-artist .avatar{
+    width: 3em;
+    height: 3em;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.search-album{
+    display: flex;
+    align-items: center;
+    gap: 0.8em;
+    padding: 0.6em 1em;
+}
+
+.search-album .cover{
+    width: 3em;
+    height: 3em;
+    border-radius: 4px;
+    object-fit: cover;
+}

@@ -13,6 +13,8 @@ class Artists(Base):
     artist_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     platform_id: Mapped[str | None] = mapped_column(String(50))
     artist_name: Mapped[str] = mapped_column(String(50), default="群星", index=True)
+    avartar_url: Mapped[str | None] = mapped_column(String(200))
+    source: Mapped[str | None] = mapped_column(String(50))
     songs_count: Mapped[int] = mapped_column(default=0)
     album_count: Mapped[int] = mapped_column(default=0)
     fans_count: Mapped[int] = mapped_column(default=0)

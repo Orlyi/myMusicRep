@@ -1,0 +1,20 @@
+
+
+
+.column{
+    flex-direction: column;
+}
+
+.search-for{
+     width:70vw;
+    background-color: #bbbbbb;
+    height:5vh;
+    opacity: 0.5;
+    margin-right: 15vw;
+    border-radius: 2em;
+}
+.S{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

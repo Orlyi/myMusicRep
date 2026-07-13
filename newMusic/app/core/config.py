@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 1440
 
+    # 网易云 Cookie（用于获取播放地址）
+    netease_cookie: str = ""
+
+    # Redis
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
+    redis_password: str = ""
+
     @property
     def database_url(self) -> str:
         """构建异步 MySQL 连接字符串"""
