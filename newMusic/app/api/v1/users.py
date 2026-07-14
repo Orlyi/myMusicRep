@@ -3,7 +3,9 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user
 from app.core.database import get_db
-from app.models import Users, UserDetails, Songs, PlayHistory
+from app.core.redis_client import get_redis
+from app.core.redis_keys import RECENT_LISTEN_PREFIX, RECENT_LISTEN_MAX
+from app.models import Users, UserDetails, Songs, Artists
 from app.schemas.common import APIResponse, PaginatedResponse
 from app.schemas.user import UserBase, UserDetailResponse, UserDetailsRequest
 from datetime import datetime
@@ -31,6 +33,67 @@ async def get_my_info(
     return APIResponse(
         data={"user": UserBase.model_validate(current_user).model_dump(),
               "details": UserDetailResponse.model_validate(details).model_dump() if details else None},
+    )
+
+@router.get("/me/recent-listens", response_model=APIResponse)
+async def get_recent_listens(
+        page: int = Query(default=1, ge=1),
+        page_size: int = Query(default=20, ge=1, le=50),
+        current_user: Users = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)):
+    """获取最近播放列表（Redis 7天）"""
+    try:
+        redis = await get_redis()
+        key = f"{RECENT_LISTEN_PREFIX}{current_user.user_id}"
+        song_ids = await redis.lrange(key, (page - 1) * page_size, page * page_size - 1)
+        total = await redis.llen(key)
+    except Exception as e:
+        print(f"Redis 最近播放读取失败: {e}")
+        return APIResponse(data=PaginatedResponse(items=[], total=0, page=page, page_size=page_size))
+
+    if not song_ids:
+        return APIResponse(data=PaginatedResponse(items=[], total=0, page=page, page_size=page_size))
+
+    # 查 songs 表获取详细信息
+    result = await db.execute(
+        select(Songs, Artists.artist_name)
+        .outerjoin(Artists, Songs.artist_id == Artists.artist_id)
+        .where(Songs.song_id.in_([int(s) for s in song_ids]))
+    )
+    song_map = {s.song_id: (s, an) for s, an in result.all()}
+
+    items = []
+    for sid in song_ids:
+        sid_int = int(sid)
+        song_info = song_map.get(sid_int)
+        if song_info:
+            s, an = song_info
+            items.append({
+                "song_id": s.song_id,
+                "platform_id": s.platform_id or "",
+                "name": s.song_name,
+                "song_name": s.song_name,
+                "artist_names": an or "",
+                "artist_name": an or "",
+                "picture_url": s.picture_url or "",
+                "download_url": s.download_url or "",
+            })
+        else:
+            items.append({
+                "song_id": sid_int,
+                "song_name": "未知",
+                "artist_name": "",
+                "picture_url": "",
+                "download_url": "",
+            })
+
+    return APIResponse(
+        data=PaginatedResponse(
+            items=items,
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
     )
 
 @router.get("/me/history", response_model=APIResponse)

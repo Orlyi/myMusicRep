@@ -1,6 +1,6 @@
-
 import {useState, useRef, useMemo, useCallback, createContext, useContext, useEffect} from "react";
 import {getLyrics} from "../api/lyric.js";
+import {saveSong, unsaveSong} from "../api/favorites.js";
 
 const PlayerContext = createContext()
 
@@ -20,17 +20,42 @@ function generateShuffled(len) {
     return arr
 }
 
+// 最近播放记录（fire-and-forget，不阻塞播放）
+function recordListen(songId) {
+    if (!songId) return
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+    if (!token) return
+    fetch(`http://localhost:8000/api/v1/songs/${songId}/listen`, {
+        method: 'POST',
+        headers: {'Authorization': `Bearer ${token}`}
+    }).catch(() => {})
+}
+
 export function PlayerProvider({ children }){
     const [playerOpen, setPlayerOpen] = useState(false)
     const openPlayer = () => setPlayerOpen(true)
     const closePlayer = () => setPlayerOpen(false)
+
+    const [detailSong, setDetailSong] = useState(null)
+    const [detailOnDelete, setDetailOnDelete] = useState(null)
+    const openDetail = useCallback((song, onDeleteCb) => {
+        setDetailSong(song)
+        setDetailOnDelete(() => onDeleteCb || null)
+    }, [])
+    const closeDetail = useCallback(() => {
+        setDetailSong(null)
+        setDetailOnDelete(null)
+    }, [])
 
     const [queue, setQueue] = useState([])
     const [currentIndex, setCurrentIndex] = useState(-1)
     const [isPlaying, setIsPlaying] = useState(false)
     const [mode, setMode] = useState(MODE.LOOP)
     const [shuffledOrder, setShuffledOrder] = useState([])
+    const [lovedSet, setLovedSet] = useState(new Set())
+    const [onDeleteSong, setOnDeleteSong] = useState(null)
     const audioRef = useRef(null)
+    const toggleLock = useRef(false)  // 防重复点击
 
     const [lyrics, setLyrics] = useState(null)
 
@@ -39,8 +64,12 @@ export function PlayerProvider({ children }){
         const idx = mode === MODE.SHUFFLE
             ? (shuffledOrder[currentIndex] ?? currentIndex)
             : currentIndex
-        return queue[idx] ?? null
-    }, [queue, currentIndex, mode, shuffledOrder])
+        const song = queue[idx] ?? null
+        if (song) {
+            song.is_love = lovedSet.has(song.song_id)
+        }
+        return song
+    }, [queue, currentIndex, mode, shuffledOrder, lovedSet])
 
     // 当前歌曲切换时自动拉歌词
     useEffect(() => {
@@ -54,7 +83,20 @@ export function PlayerProvider({ children }){
             .catch(() => setLyrics(null))
     }, [currentSong?.song_id])
 
-    const resolveUrl = (url) => url?.startsWith("http") ? url : `http://localhost:8000${url}`
+    const is_cdn_domain = (url) =>
+        url && typeof url === 'string' && (
+            url.includes('music.126.net') ||
+            url.includes('126.net') ||
+            (url.startsWith('http') && !url.includes('localhost'))
+        )
+
+    const resolveUrl = (url) => {
+        if (!url) return ''
+        if (is_cdn_domain(url)) {
+            return `/api/v1/network/audio-proxy?url=${encodeURIComponent(url)}`
+        }
+        return url.startsWith('http') ? url : `http://localhost:8000${url}`
+    }
 
     const playIndex = useCallback((index) => {
         if (index < 0 || index >= queue.length) return
@@ -69,6 +111,8 @@ export function PlayerProvider({ children }){
             audioRef.current.play().catch(err => {
                 if (err.name !== 'AbortError') console.log('播放失败:', err)
             })
+            // 记录最近播放
+            recordListen(song.song_id)
         }
     }, [queue])
 
@@ -163,6 +207,39 @@ export function PlayerProvider({ children }){
         ))
     }, [])
 
+    const toggleLove = useCallback(async (song) => {
+        if (!song?.song_id || toggleLock.current) return
+        toggleLock.current = true
+        try {
+            const loved = lovedSet.has(song.song_id)
+            if (loved) {
+                await unsaveSong(song.song_id)
+            } else {
+                await saveSong(song.song_id)
+            }
+            setLovedSet(prev => {
+                const next = new Set(prev)
+                if (loved) next.delete(song.song_id)
+                else next.add(song.song_id)
+                return next
+            })
+        } catch (err) {
+            console.log('收藏操作失败:', err)
+        } finally {
+            toggleLock.current = false
+        }
+    }, [lovedSet])
+
+    // 初始化 lovedSet 用的——播放时如果歌曲已经在收藏列表里
+    const initLoveState = useCallback((songIds) => {
+        if (songIds.length === 0) return
+        setLovedSet(prev => {
+            const next = new Set(prev)
+            songIds.forEach(id => next.add(id))
+            return next
+        })
+    }, [])
+
     const removeFromQueue = useCallback((song) => {
         setQueue(prev => {
             const idx = prev.findIndex(s => s.song_id === song.song_id)
@@ -212,9 +289,9 @@ export function PlayerProvider({ children }){
     return(
         <PlayerContext.Provider value={{
             currentSong, isPlaying, lyrics, queue, currentIndex, mode,
-            playerOpen, openPlayer, closePlayer,
+            playerOpen, openPlayer, closePlayer, detailSong, detailOnDelete, openDetail, closeDetail,
             play, playQueue, playIndex, next, prev, removeFromQueue, addToQueue, clearQueue,
-            pause, resume, toggleMode, updateCurrentSong, audioRef
+            pause, resume, toggleMode, updateCurrentSong, toggleLove, initLoveState, lovedSet, audioRef
         }}>
             {children}
             <audio ref={audioRef} onEnded={handleEnded} />

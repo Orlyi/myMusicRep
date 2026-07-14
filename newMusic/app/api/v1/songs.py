@@ -3,6 +3,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_current_user_optional
+from app.core.redis_client import get_redis
+from app.core.redis_keys import RECENT_LISTEN_PREFIX, RECENT_LISTEN_MAX, RECENT_LISTEN_TTL
 from app.models import Songs, PlayHistory, Users, Artists, UserSaveSong
 from app.schemas.common import APIResponse, PaginatedResponse
 from app.services.song_service import is_song_loved
@@ -26,15 +28,28 @@ async def play_song(
         return APIResponse(code=404, message="Song not found")
 
     song.play_count += 1
-    db.add(PlayHistory(
-        user_id= current_user.user_id,
-        song_id = song_id,
-        artist_id = song.artist_id,
-        is_completed = is_completed,
-        playlist_duration = playlist_duration,
-    ))
     await db.flush()
+
     return APIResponse(data = {"play_count": song.play_count})
+
+
+@router.post("/{song_id}/listen", response_model=APIResponse)
+async def record_listen(
+        song_id: int,
+        current_user: Users = Depends(get_current_user)):
+    """记录一次播放到 Redis 最近播放（仅 Redis，不写 MySQL）"""
+    try:
+        redis = await get_redis()
+        key = f"{RECENT_LISTEN_PREFIX}{current_user.user_id}"
+        await redis.lrem(key, 0, song_id)
+        await redis.lpush(key, song_id)
+        await redis.ltrim(key, 0, RECENT_LISTEN_MAX - 1)
+        await redis.expire(key, RECENT_LISTEN_TTL)
+    except Exception as e:
+        print(f"Redis 最近播放写入失败: {e}")
+        return APIResponse(code=500, message="记录播放失败")
+    return APIResponse()
+
 
 @router.post("/{song_id}/download", response_model=APIResponse)
 async def download_song(

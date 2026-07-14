@@ -15,6 +15,11 @@ PENDING_DOWNLOAD_TTL = 120  # 2 分钟，超时自动释放
 DOWNLOAD_QUEUE_KEY = "netease:dl_queue"
 DOWNLOAD_TASK_TTL = 86400  # 24 小时，防止堆积
 
+# ── 用户最近播放（听过） ──
+RECENT_LISTEN_PREFIX = "user:listen:"
+RECENT_LISTEN_MAX = 50       # 最多保留50首
+RECENT_LISTEN_TTL = 604800   # 7天
+
 # ── 通用 ──
 TASK_LOCK_PREFIX = "lock:"
 TASK_LOCK_TTL = 30  # 秒

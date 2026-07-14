@@ -7,6 +7,8 @@ export const getMyInfo = () => {
 
 export const getMyHistory = (params) => client.get("/users/me/history", {params})
 
+export const getRecentListens = (params) => client.get("/users/me/recent-listens", {params})
+
 export const registerDuration = () => client.get("/users/me/register-duration")
 
 export const writeMyInfo = (data) => client.put("/users/me", data)

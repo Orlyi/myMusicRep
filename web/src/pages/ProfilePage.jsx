@@ -1,6 +1,6 @@
 import {useOutletContext, useNavigate} from "react-router-dom";
 import {useEffect, useState} from "react";
-import {getMyInfo, getMyHistory} from "../api/users.js";
+import {getMyInfo, getRecentListens} from "../api/users.js";
 import {listFavorites} from "../api/favorites.js";
 import {myPlaylists} from "../api/playlists.js";
 import useAuth from "../hooks/useAuth.js";
@@ -9,7 +9,6 @@ import {PlaylistItem} from "../components/PlaylistItem.jsx";
 import "./ProfilePage.css"
 import {usePlayer} from "../layouts/PlayerContext.jsx";
 import {downloadSong} from "../api/songs.js";
-import {saveSong, unsaveSong} from "../api/favorites.js"
 import {SearchSongItem} from "../components/SearchSongItem.jsx";
 
 export default function ProfilePage(){
@@ -22,7 +21,7 @@ export default function ProfilePage(){
     const [favorites, setFavorites] = useState([])
     const [history, setHistory] = useState([])
     const [playlists, setPlaylists] = useState([])
-    const {play, addToQueue}= usePlayer()
+    const {play, addToQueue, toggleLove, lovedSet, initLoveState, openDetail}= usePlayer()
 
     const handlePlay = async (song) =>{
         try{
@@ -30,20 +29,16 @@ export default function ProfilePage(){
             if(res.data?.download_url){
                 play(res.data, res.data.download_url)
             }
-
         }catch (err){
             console.log(err)
         }
     }
 
-    const handleSave = async (song) =>{
-        try{
-            song.is_love===false ? await saveSong(song.song_id) :await unsaveSong(song.song_id)
+    const handleSave = (song) => toggleLove(song)
 
-            setFavorites(prev=>prev.map(item=>item.song_id===song.song_id ? {...item, is_love:!item.is_love}: item))
-        }catch (err){
-            console.log(err)
-        }
+    // "听过"的删除：从当前列表和 Redis 移除
+    const handleHistoryDelete = (song) => {
+        setHistory(prev => prev.filter(item => item.song_id !== song.song_id))
     }
 
     useEffect(() => {
@@ -76,13 +71,16 @@ export default function ProfilePage(){
     useEffect(()=>{
         if(acting === 1){
             listFavorites({type:"song", page:1, page_size:20}).then(res=>{
-                setFavorites(res.data?.items || [])
+                const items = res.data?.items || []
+                setFavorites(items)
+                // 同步到全局 lovedSet
+                initLoveState(items.map(i => i.song_id))
             }).catch(err=>{console.log("获取收藏失败", err)})
         }
         if(acting === 2){
-            getMyHistory({page:1, page_size:20}).then(res=>{
+            getRecentListens({page:1, page_size:20}).then(res=>{
                 setHistory(res.data?.items || [])
-            }).catch(err=>{console.log("获取历史失败", err)})
+            }).catch(err=>{console.log("获取最近播放失败", err)})
         }
         if(acting === 3){
             myPlaylists({page:1, page_size:20}).then(res=>{
@@ -108,11 +106,11 @@ export default function ProfilePage(){
                         {favorites.map(item=>(
                             <SongItem
                                 key={item.song_id}
-                                song={item}
+                                song={{...item, is_love: lovedSet.has(item.song_id)}}
                                 onSave={()=> handleSave(item)}
                                 onPlay={()=>handlePlay(item)}
                                 onAdd={() => addToQueue(item)}
-                                onMore={() => console.log("更多操作", item)}
+                                onMore={(s) => openDetail(s, null)}
                                 onClick={()=>handlePlay(item)}
                             />
                         ))}
@@ -124,11 +122,13 @@ export default function ProfilePage(){
                 ) : (
                     <ul className="song-list">
                         {history.map(item=>(
-                            <SongItem
-                                key={item.play_id}
-                                song={item}
-                                onPlay={(id) => navigate(`/song/${id}`)}
-                                onMore={(song) => console.log("更多操作", song)}
+                            <SearchSongItem
+                                key={item.song_id}
+                                song={{...item, is_love: lovedSet.has(item.song_id)}}
+                                onPlay={() => handlePlay(item)}
+                                onAdd={() => addToQueue(item)}
+                                onSave={() => handleSave(item)}
+                                onMore={(s) => openDetail(s, handleHistoryDelete)}
                             />
                         ))}
                     </ul>
@@ -172,10 +172,7 @@ export default function ProfilePage(){
             <section className="profile-content">
                 {renderContent()}
             </section>
-
-            <section className="profile-logout">
-                <button onClick={()=>logout()}>退出登录</button>
-            </section>
+            
         </div>
     )
 }

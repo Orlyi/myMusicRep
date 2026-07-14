@@ -186,16 +186,15 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 0 1em;
+    width:70vw;
 }
 
 .player-artist-name {
     position: relative;
     z-index: 1;
     font-size: 0.8em;
-    color: #999;
+    color: #d3d3d3;
     text-align: center;
-    margin-bottom: 0.2em;
 }
 
 /* 进度条 */

@@ -1,25 +1,16 @@
 import {usePlayer} from "../layouts/PlayerContext.jsx";
 import {SongList} from "./SongList.jsx";
-import {saveSong, unsaveSong} from "../api/favorites.js";
 import {Repeat,Repeat1,Shuffle,Trash2} from "lucide-react"
 
 export function QueueDrawer({open, onClose}){
-    const {queue, currentIndex, mode, toggleMode, playIndex, updateCurrentSong, removeFromQueue, clearQueue} = usePlayer()
+    const {queue, currentIndex, mode, toggleMode, playIndex, removeFromQueue, clearQueue, toggleLove, lovedSet} = usePlayer()
 
     const handlePlay = (song) => {
         const idx = queue.findIndex(s => s.song_id === song.song_id)
         playIndex(idx)
     }
 
-    const handleSave = async (song) => {
-        try {
-            const loved = song.is_love
-            loved ? await unsaveSong(song.song_id) : await saveSong(song.song_id)
-            updateCurrentSong(song, {is_love: !loved})
-        } catch(err) {
-            console.log(err)
-        }
-    }
+    const handleSave = (song) => toggleLove(song)
 
     const modeIcon = mode === 'loop' ? <Repeat size={16}/>
         : mode === 'single' ? <Repeat1 size={16}/>
@@ -48,7 +39,7 @@ export function QueueDrawer({open, onClose}){
                 {queue.map((song, i) => (
                     <SongList
                         key={song.song_id + '-' + i}
-                        song={song}
+                        song={{...song, is_love: lovedSet.has(song.song_id)}}
                         isActive={i === currentIndex}
                         onPlay={handlePlay}
                         onSave={handleSave}

@@ -1,5 +1,5 @@
 import {usePlayer} from "../layouts/PlayerContext.jsx";
-import {ChevronDown, Heart, Play, Pause, SkipBack, SkipForward, Repeat, Repeat1, Shuffle, ListVideo} from "lucide-react";
+import {ChevronDown, Heart, Play, Pause, SkipBack, SkipForward, Repeat, Repeat1, Shuffle, ListVideo, EllipsisVertical} from "lucide-react";
 import {useState, useEffect, useRef, useCallback, useMemo} from "react";
 import './PlayerPage.css';
 
@@ -7,7 +7,8 @@ export default function PlayerPage({onOpenQueue}){
 
     const {
         currentSong, isPlaying, lyrics, mode, playerOpen,
-        closePlayer, pause, resume, next, prev, toggleMode, updateCurrentSong
+        closePlayer, pause, resume, next, prev, toggleMode, updateCurrentSong,
+        toggleLove, lovedSet, openDetail
     } = usePlayer();
 
     // 0 = 封面页, 1 = 歌词页
@@ -122,8 +123,13 @@ export default function PlayerPage({onOpenQueue}){
                 </div>
 
                 {/* 歌名 + 歌手 */}
-                <div className="player-song-name">{currentSong?.song_name || '未在播放'}</div>
-                <div className="player-artist-name">{currentSong?.artist_name || ''}</div>
+                <div className="flex" style={{}}>
+                    <div style={{flex:1,minWidth:0}}>
+                        <div className="player-song-name" style={{whiteSpace:'nowrap',padding:0}}>{currentSong?.song_name || '未在播放'}</div>
+                        <div className="player-artist-name" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{currentSong?.artist_name || ''}</div>
+                    </div>
+
+                </div>
 
                 {/* 页面指示器 */}
                 <div className="player-page-dots">
@@ -136,7 +142,7 @@ export default function PlayerPage({onOpenQueue}){
                         <div className="player-page-content cover-page">
                             <div className="player-cover-wrap">
                                 <img className={`player-cover ${isPlaying ? '' : 'paused'}`}
-                                    src={currentSong?.picture_url || ''} alt="cover" />
+                                    src={currentSong?.picture_url || null} alt="cover" />
                             </div>
                             <div className="player-lyrics-preview">
                                 {lrcLines.length > 0 ? (

@@ -17,7 +17,7 @@ const TYPE_MAP = [
 
 export default function SearchPage(){
     const navigate = useNavigate()
-    const {play, addToQueue} = usePlayer()
+    const {play, addToQueue, openDetail} = usePlayer()
     const [source, setSource] = useState("netease")
     const [type, setType] = useState("song")
     const [keyword, setKeyword] = useState("")
@@ -111,7 +111,13 @@ export default function SearchPage(){
                 picture_url: song.picture_url,
             })
             if (res.data?.url) {
-                play({...song, song_id: res.data.song_id}, res.data.url)
+                play({
+                    ...song,
+                    song_id: res.data.song_id,
+                    song_name: song.name,
+                    artist_name: song.artist_names,
+                    picture_url: res.data.picture_url || song.picture_url || '',
+                }, res.data.url)
             }
         } catch (e) {
             console.error("获取播放地址失败", e)
@@ -127,7 +133,9 @@ export default function SearchPage(){
                            placeholder="喵"
                            value={keyword}
                            onChange={e => setKeyword(e.target.value)}
-                           onKeyDown={handleKeyDown} />
+                           onKeyDown={handleKeyDown}
+                            autoFocus
+                    />
                 </div>
                 <button className="cancel" onClick={() => navigate(-1)}>取消</button>
             </div>
@@ -165,7 +173,7 @@ export default function SearchPage(){
                         {results.map((item, i) => (
                             <div key={`${item.platform_id}-${i}`}>
                                 {type === "song" || type === "lyric" ? (
-                                    <SearchSongItem song={item} onPlay={handlePlay} />
+                                    <SearchSongItem song={item} onPlay={handlePlay} onMore={(s) => openDetail(s, null)} />
                                 ) : type === "artist" ? (
                                     <div className="search-artist">
                                         <img src={item.picture_url} alt="" className="avatar" />

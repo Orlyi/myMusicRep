@@ -7,6 +7,7 @@ import {SideItem} from "../components/SidebarItem.jsx";
 import {PlayerBar} from "../components/PlayerBar.jsx";
 import {QueueDrawer} from "../components/QueueDrawer.jsx";
 import PlayerPage from "../pages/PlayerPage.jsx";
+import {SongDetail} from "../components/SongDetail.jsx";
 
 export default function MainLayout() {
 	const [open, setOpen] = useState(false)
@@ -60,6 +61,7 @@ export default function MainLayout() {
 	        </div>
 
 	        <PlayerPage onOpenQueue={()=>setQueueOpen(true)} />
+        <SongDetail />
 
 	        <div className="Player">
 	            <PlayerBar onOpenQueue={()=>setQueueOpen(true)}></PlayerBar>
