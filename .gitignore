@@ -22,6 +22,10 @@ Thumbs.db
 
 # ── 不上传的目录 ──
 oldMusic/
-music/
 spiders/
 备份/
+music/
+web/uploads/
+
+# 测试文件
+test/
