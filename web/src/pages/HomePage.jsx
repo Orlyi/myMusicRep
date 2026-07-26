@@ -7,6 +7,7 @@ import {Search, Sparkles, ListMusic, ChevronRight} from "lucide-react"
 import {networkPlayUrl} from "../api/search.js";
 import {recommend, recommendPlaylists} from "../api/recommend.js";
 import {usePlayer} from "../layouts/PlayerContext.jsx";
+import {STATIC_BASE} from "../config.js";
 
 export default function HomePage(){
     const navigate = useNavigate()
@@ -44,7 +45,7 @@ export default function HomePage(){
 
     function resolveCover(url) {
         if (!url) return null
-        if (url.startsWith("/static")) return `http://localhost:8000${url}`
+        if (url.startsWith("/static")) return `${STATIC_BASE}${url}`
         return url
     }
 

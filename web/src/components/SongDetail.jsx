@@ -3,6 +3,7 @@ import {usePlayer} from "../layouts/PlayerContext.jsx";
 import {useRef, useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router-dom";
 import {myPlaylists, addSongToPlaylist} from "../api/playlists.js";
+import {STATIC_BASE} from "../config.js";
 
 export function SongDetail({onAdd, onSave, onAddToPlaylist, onDownload}){
     const {closeDetail, addToQueue, toggleLove, lovedSet, detailSong, detailOnDelete} = usePlayer();
@@ -147,7 +148,7 @@ export function SongDetail({onAdd, onSave, onAddToPlaylist, onDownload}){
                                         onMouseLeave={e => e.currentTarget.style.background="transparent"}
                                     >
                                         <img
-                                            src={pl.cover_url ? (pl.cover_url.startsWith("/static") ? `http://localhost:8000${pl.cover_url}` : pl.cover_url) : ""}
+                                            src={pl.cover_url ? (pl.cover_url.startsWith("/static") ? `${STATIC_BASE}${pl.cover_url}` : pl.cover_url) : ""}
                                             alt=""
                                             style={{width:"2.5em", height:"2.5em", borderRadius:6, objectFit:"cover", background:"#eee"}}
                                         />

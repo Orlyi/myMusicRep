@@ -1,6 +1,7 @@
 import {useState, useRef, useMemo, useCallback, createContext, useContext, useEffect} from "react";
 import {getLyrics} from "../api/lyric.js";
 import {saveSong, unsaveSong} from "../api/favorites.js";
+import {STATIC_BASE} from "../config.js";
 
 const PlayerContext = createContext()
 
@@ -25,7 +26,7 @@ function recordListen(songId) {
     if (!songId) return
     const token = localStorage.getItem('token') || sessionStorage.getItem('token')
     if (!token) return
-    fetch(`http://localhost:8000/api/v1/songs/${songId}/listen`, {
+    fetch(`${STATIC_BASE}/api/v1/songs/${songId}/listen`, {
         method: 'POST',
         headers: {'Authorization': `Bearer ${token}`}
     }).catch(() => {})
@@ -102,9 +103,9 @@ export function PlayerProvider({ children }){
     const resolveUrl = (url) => {
         if (!url) return ''
         if (is_cdn_domain(url)) {
-            return `http://localhost:8000/api/v1/network/audio-proxy?url=${encodeURIComponent(url)}`
+            return `${STATIC_BASE}/api/v1/network/audio-proxy?url=${encodeURIComponent(url)}`
         }
-        return url.startsWith('http') ? url : `http://localhost:8000${url}`
+        return url.startsWith('http') ? url : `${STATIC_BASE}${url}`
     }
 
     const playIndex = useCallback((index) => {

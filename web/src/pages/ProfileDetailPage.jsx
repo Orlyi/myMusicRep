@@ -4,6 +4,7 @@ import {useEffect, useState} from "react";
 import {getMyInfo, writeMyInfo} from "../api/users.js";
 import {uploadAvatar} from "../api/auth.js";
 import {ChevronLeft} from "lucide-react";
+import {STATIC_BASE} from "../config.js";
 
 export default function ProfileDetailPage(){
     const navigate = useNavigate();
@@ -88,7 +89,7 @@ export default function ProfileDetailPage(){
 
             {/* 头像 */}
             <div style={{display:"flex", justifyContent:"center", marginBottom:"0", position:"relative"}}>
-                <img src={user?.avatar_url ? `http://localhost:8000${user.avatar_url}` : ""}
+                <img src={user?.avatar_url ? `${STATIC_BASE}${user.avatar_url}` : ""}
                     alt="" style={{width:"20vw", height:"20vw", maxWidth:90, maxHeight:90, borderRadius:"50%", objectFit:"cover", background:"#eee"}} />
                 {editing && (
                     <label style={{

@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-
+from pydantic import Field
 
 class Settings(BaseSettings):
     """应用配置，自动从 .env 文件加载"""
@@ -41,7 +41,7 @@ class Settings(BaseSettings):
             f"?charset=utf8mb4"
         )
 
-    model_config = {"env_file": ".env.example", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env.prod", "env_file_encoding": "utf-8"}
 
 
 settings = Settings()

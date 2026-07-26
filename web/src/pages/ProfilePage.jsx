@@ -10,6 +10,7 @@ import {SearchSongItem} from "../components/SearchSongItem.jsx";
 import {PlaylistItem} from "../components/PlaylistItem.jsx";
 import "./ProfilePage.css"
 import {usePlayer} from "../layouts/PlayerContext.jsx";
+import {STATIC_BASE} from "../config.js";
 
 export default function ProfilePage(){
     const {setHeaderContent} = useOutletContext()
@@ -217,7 +218,7 @@ export default function ProfilePage(){
             <section className="profile-info" onClick={()=>navigate("/profile/detail")}>
                 <div className="avatar">
                     {user?.avatar_url ? (
-                        <img src={`http://localhost:8000${user.avatar_url}`} alt="头像" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} />
+                        <img src={`${STATIC_BASE}${user.avatar_url}`} alt="头像" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} />
                     ) : (
                         user?.user_name?.[0]?.toUpperCase() || "?"
                     )}

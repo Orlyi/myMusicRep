@@ -1,10 +1,15 @@
 import sys
 import os
 
-# 把 spiders 目录加到 path，方便 import encrypt.py
-_spiders_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "spiders")
+# 兼容开发环境和 PyInstaller 打包后的路径查找 encrypt.py
+_spiders_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "spiders")
 if _spiders_dir not in sys.path:
     sys.path.insert(0, _spiders_dir)
+
+# PyInstaller 打包后路径再试一个
+_alt_spiders_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "spiders")
+if _alt_spiders_dir not in sys.path:
+    sys.path.insert(0, _alt_spiders_dir)
 
 import asyncio
 

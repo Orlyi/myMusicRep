@@ -1,8 +1,9 @@
 import { Trash2 } from "lucide-react";
+import {STATIC_BASE} from "../config.js";
 
 function resolveCover(url) {
-    if (!url) return "http://localhost:8000/static/defaults/photo.jpg"
-    if (url.startsWith("/static")) return `http://localhost:8000${url}`
+    if (!url) return `${STATIC_BASE}/static/defaults/photo.jpg`
+    if (url.startsWith("/static")) return `${STATIC_BASE}${url}`
     return url
 }
 

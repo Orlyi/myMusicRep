@@ -1,6 +1,8 @@
 import axios from 'axios'
 
-// 前端内存缓存（key → { data, time }）
+
+import {API_BASE} from "../config.js"
+
 const cache = new Map()
 const CACHE_TTL = 300_000 // 5 分钟
 
@@ -9,23 +11,23 @@ function cacheKey(config) {
 }
 
 const client = axios.create({
-    baseURL: 'http://localhost:8000/api/v1',
+    baseURL: API_BASE,
     timeout: 10000,
     headers: { 'Content-Type': 'application/json' }
 })
 
-const requestQueue = new Map() // 请求去重，同 url+params 只发一个
+const requestQueue = new Map()
 
 client.interceptors.request.use((config) => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token')
     if (token) config.headers.Authorization = `Bearer ${token}`
 
-    // GET 命中缓存 → 跳过
+
     if (config.method === 'get') {
         const key = cacheKey(config)
         const hit = cache.get(key)
         if (hit && Date.now() - hit.time < CACHE_TTL) {
-            // 用 cancelToken 取消请求，直接 resolve
+
             const source = axios.CancelToken.source()
             config.cancelToken = source.token
             source.cancel(JSON.stringify(hit.data))
