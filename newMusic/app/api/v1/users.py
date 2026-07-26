@@ -5,16 +5,18 @@ from app.core.deps import get_current_user
 from app.core.database import get_db
 from app.core.redis_client import get_redis
 from app.core.redis_keys import RECENT_LISTEN_PREFIX, RECENT_LISTEN_MAX
-from app.models import Users, UserDetails, Songs, Artists
+from app.models import Users, UserDetails, Songs, Artists, Albums
 from app.schemas.common import APIResponse, PaginatedResponse
 from app.schemas.user import UserBase, UserDetailResponse, UserDetailsRequest
 from datetime import datetime
+from app.core.cache import cached, cache_delete
 
 router = APIRouter()
 
 
 
 @router.get("/me/info", response_model=APIResponse)
+@cached("user:info", ttl=300)
 async def get_my_info(
         current_user: Users = Depends(get_current_user),
         db: AsyncSession = Depends(get_db)):
@@ -36,6 +38,7 @@ async def get_my_info(
     )
 
 @router.get("/me/recent-listens", response_model=APIResponse)
+@cached("user:listens", ttl=120)
 async def get_recent_listens(
         page: int = Query(default=1, ge=1),
         page_size: int = Query(default=20, ge=1, le=50),
@@ -56,18 +59,19 @@ async def get_recent_listens(
 
     # 查 songs 表获取详细信息
     result = await db.execute(
-        select(Songs, Artists.artist_name)
+        select(Songs, Artists.artist_name, Albums.album_name)
         .outerjoin(Artists, Songs.artist_id == Artists.artist_id)
+        .outerjoin(Albums, Songs.album_id == Albums.album_id)
         .where(Songs.song_id.in_([int(s) for s in song_ids]))
     )
-    song_map = {s.song_id: (s, an) for s, an in result.all()}
+    song_map = {s.song_id: (s, an, aln) for s, an, aln in result.all()}
 
     items = []
     for sid in song_ids:
         sid_int = int(sid)
         song_info = song_map.get(sid_int)
         if song_info:
-            s, an = song_info
+            s, an, aln = song_info
             items.append({
                 "song_id": s.song_id,
                 "platform_id": s.platform_id or "",
@@ -75,8 +79,10 @@ async def get_recent_listens(
                 "song_name": s.song_name,
                 "artist_names": an or "",
                 "artist_name": an or "",
+                "album_name": aln or s.album_name or "",
                 "picture_url": s.picture_url or "",
                 "download_url": s.download_url or "",
+                "source": s.source or "",
             })
         else:
             items.append({
@@ -97,6 +103,7 @@ async def get_recent_listens(
     )
 
 @router.get("/me/history", response_model=APIResponse)
+@cached("user:history", ttl=120)
 async def get_my_history(
         page: int = Query(default=1, ge=1),
         page_size: int = Query(default=20, ge=1, le=100),
@@ -140,6 +147,7 @@ async def get_my_history(
     )
 
 @router.get("/me/register-duration", response_model=APIResponse)
+@cached("user:reg-dur", ttl=600)
 async def register_duration(
         current_user: Users = Depends(get_current_user)):
     days = (datetime.now() - current_user.create_time).days
@@ -170,6 +178,7 @@ async def write_my_info(
         setattr(details, field, value)
 
     await db.flush()
+    await cache_delete("user:*")
     return APIResponse(
         message="User details updated successfully",
     )

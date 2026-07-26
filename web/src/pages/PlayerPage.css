@@ -31,6 +31,7 @@
     z-index: 850;
     transform: translateY(100%);
     pointer-events: none;
+    overscroll-behavior: none;  /* 防止滚动穿透 */
     transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
@@ -83,6 +84,7 @@
     overflow: hidden;
     position: relative;
     z-index: 0;
+    touch-action: pan-y;  /* 只允许垂直触控，不传递滚动 */
 }
 
 .player-pages-track {
@@ -128,7 +130,12 @@
 .player-lyrics-preview {
     text-align: center;
     width: 100%;
-    max-width: 320px;
+    max-width: 20em;
+    height: 6em;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
 }
 
 /* ========== 歌词页 ========== */
@@ -140,7 +147,10 @@
     text-align: center;
     padding: 0.5em;
     scrollbar-width: none;
-}
+    overscroll-behavior: contain;
+    scroll-behavior: auto !important;  /* 滚动到底部不让页面弹走 */
+}  /* 滚动到底部不让页面弹走 */
+
 
 .lrc-line {
     padding: 0.25em 0;
@@ -149,6 +159,7 @@
     color: #777;
     transition: color 0.3s, font-size 0.3s;
     cursor: pointer;
+    line-height: 1.4;
 }
 
 .lrc-line-lg {
@@ -158,7 +169,6 @@
 
 .lrc-line.active {
     color: #ffffff;
-    font-size: 1.1em;
     font-weight: 600;
     text-shadow: 0 0 6px rgba(0,0,0,0.6);
 }
@@ -221,7 +231,6 @@
     border-radius: 3px;
     outline: none;
     cursor: pointer;
-    background: linear-gradient(to right, #1db954 var(--pct, 0%), #444 var(--pct, 0%));
 }
 
 .player-slider::-webkit-slider-thumb {

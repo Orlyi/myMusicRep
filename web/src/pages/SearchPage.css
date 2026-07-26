@@ -1,4 +1,5 @@
 
+
 .search-bar{
     display: flex;
     align-items: center;
@@ -85,10 +86,9 @@
 }
 
 .search-results{
-    width: 100%;
-    flex: 1;
-    overflow-y: auto;
+    overflow:auto !important;
 }
+
 
 .loading{
     text-align: center;
@@ -98,7 +98,6 @@
 
 .empty{
     text-align: center;
-    padding: 2em;
     color: #999;
 }
 
@@ -128,4 +127,44 @@
     height: 3em;
     border-radius: 4px;
     object-fit: cover;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Toast 提示 */
+.toast-overlay{
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 1000;
+    pointer-events: none;
+    padding-top: 20vh;
+}
+
+.toast-content{
+    background: #333;
+    color: #fff;
+    padding: 0.8em 1.2em;
+    border-radius: 2em;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    pointer-events: auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    max-width: 80vw;
+}
+
+.toast-text{
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

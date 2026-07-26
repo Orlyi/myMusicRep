@@ -26,14 +26,18 @@ button{
 .page{
     display: flex;
     flex: 1;
+    flex-direction: column;
     overflow: auto;
-    align-items: center;
-    justify-content: center;
+    min-height: 0;
+    position: relative;
 }
 
 .app-layout{
 height: 100vh;
 overflow: hidden;
+position: relative;
+display: flex;
+flex-direction: column;
 }
 
 .main-content{
@@ -41,6 +45,8 @@ flex: 1;
 overflow: auto;
 display: flex;
 flex-direction: column;
+min-height: 0;
+position: relative;
 }
 
 .nav{
@@ -51,6 +57,7 @@ flex-direction: column;
     justify-content: space-around;
     position: fixed;
     bottom: 0;
+    z-index: 100;
     a{
         flex: 1;
         flex-direction: column;
@@ -71,15 +78,37 @@ a.isAct{
     color:black;
 }
 
+/* 跑马灯 - 无缝循环 */
+.marquee-wrap{
+    overflow: hidden;
+    width: 100%;
+    white-space: nowrap;
+}
+.marquee-text{
+    display: inline-block;
+    white-space: nowrap;
+    animation: marquee 15s linear infinite;
+    will-change: transform;
+}
+@keyframes marquee{
+    0%{transform:translateX(0)}
+    100%{transform:translateX(-50%)}
+}
+
 .Player{
     height: 10%;
     width: 100%;
     position: fixed;
     bottom: 10%;
+    z-index: 99;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 820;
+    box-sizing: border-box;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+    background: rgba(255,255,255,0.8);
 }
 
 .Icon{

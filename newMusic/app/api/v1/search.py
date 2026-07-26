@@ -7,11 +7,13 @@ from app.schemas.common import APIResponse, PaginatedResponse
 from app.schemas.song import SongBase
 from app.schemas.artist import ArtistBase
 from app.schemas.album import AlbumBase
+from app.core.cache import cached
 
 router = APIRouter()
 
 
 @router.get("/song-name", response_model=APIResponse)
+@cached("search:song", ttl=300)
 async def search_song_name(
         keyword: str = Query(min_length=1, max_length=100),
         page: int = Query(default=1, ge=1),
@@ -38,6 +40,7 @@ async def search_song_name(
 
 
 @router.get("/artist-name", response_model=APIResponse)
+@cached("search:artist", ttl=300)
 async def search_artist_name(
         keyword: str = Query(min_length=1, max_length=20),
         page: int = Query(default=1, ge=1),
@@ -64,6 +67,7 @@ async def search_artist_name(
 
 
 @router.get("/album-name", response_model=APIResponse)
+@cached("search:album", ttl=300)
 async def search_album_name(
         keyword: str = Query(min_length=1, max_length=20),
         page: int = Query(default=1, ge=1),
@@ -90,6 +94,7 @@ async def search_album_name(
 
 
 @router.get("/plain-lyric", response_model=APIResponse)
+@cached("search:lyric", ttl=300)
 async def search_plain_lyric(
         keyword: str = Query(min_length=1, max_length=100),
         page: int = Query(default=1, ge=1),

@@ -16,7 +16,7 @@ class PlaylistBase(BaseModel):
     playlist_id: int
     playlist_name: str
     user_id: int | None = None
-    username: str = ""
+    user_name: str = ""
     introduction: str = ""
     cover_url: str = ""
     songs_count: int
@@ -31,7 +31,13 @@ class SongInPlaylist(BaseModel):
     song_id: int
     song_name: str
     artist_id: int | None = None
+    artist_name: str = ""
+    album_id: int | None = None
+    album_name: str = ""
     picture_url: str | None = None
+    source: str | None = None
+    platform_id: str | None = None
+    download_url: str | None = None
 
     model_config = {"from_attributes": True}
 

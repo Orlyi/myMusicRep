@@ -23,23 +23,31 @@ export default function PlayerPage({onOpenQueue}){
 
     useEffect(() => {
         const el = document.querySelector('audio');
+        if (!el) return;
         progressRef.current = el;
+
         const onTime = () => setProgress(el?.currentTime || 0);
-        const onMeta = () => setDuration(el?.duration || 0);
-        if (el) {
-            el.addEventListener('timeupdate', onTime);
-            el.addEventListener('loadedmetadata', onMeta);
-        }
-        return () => {
-            if (el) {
-                el.removeEventListener('timeupdate', onTime);
-                el.removeEventListener('loadedmetadata', onMeta);
+        const onMeta = () => {
+            if (el?.duration && isFinite(el.duration)) {
+                setDuration(el.duration);
             }
+        };
+        // 可能 audio 已经有 src 了，主动触发一次
+        onMeta();
+
+        el.addEventListener('timeupdate', onTime);
+        el.addEventListener('loadedmetadata', onMeta);
+        el.addEventListener('durationchange', onMeta);
+
+        return () => {
+            el.removeEventListener('timeupdate', onTime);
+            el.removeEventListener('loadedmetadata', onMeta);
+            el.removeEventListener('durationchange', onMeta);
         };
     }, [currentSong?.song_id]);
 
     const formatTime = (t) => {
-        if (!t || isNaN(t)) return '00:00';
+        if (!t || isNaN(t) || !isFinite(t)) return '00:00';
         const m = Math.floor(t / 60);
         const s = Math.floor(t % 60);
         return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
@@ -90,14 +98,31 @@ export default function PlayerPage({onOpenQueue}){
 
     const lrcContainerRef = useRef(null);
     useEffect(() => {
-        if (page === 1 && activeLrcIndex >= 0 && lrcContainerRef.current) {
-            const el = lrcContainerRef.current.querySelector(`[data-lrc="${activeLrcIndex}"]`);
-            if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+        if (page !== 1 || activeLrcIndex < 0 || !lrcContainerRef.current) return;
+        const container = lrcContainerRef.current;
+        const el = container.querySelector(`[data-lrc="${activeLrcIndex}"]`);
+        if (!el) return;
+        const cH = container.clientHeight;
+        const eTop = el.offsetTop;
+        const eH = el.offsetHeight;
+
+        // 当前行理想的居中位置
+        const ideal = eTop - cH / 2 + eH / 2;
+        // 容器能滚的最大值
+        const maxScroll = container.scrollHeight - cH;
+        const target = Math.max(0, Math.min(ideal, maxScroll));
+
+        // 只在偏离超过一行时才触发滚动，平滑但不弹跳
+        if (Math.abs(container.scrollTop - target) > eH * 0.8) {
+            container.scrollTo({top: target, behavior: 'smooth'});
         }
     }, [activeLrcIndex, page]);
 
-    // 滑动切换
+    // 滑动切换（阻止冒泡防页面整体滑动）
     const handleTouchStart = (e) => { touchStart.current = e.touches[0].clientY; };
+    const handleTouchMove = (e) => {
+        if (touchStart.current) e.preventDefault();
+    };
     const handleTouchEnd = (e) => {
         if (!touchStart.current || isSwitching.current) return;
         const diff = touchStart.current - e.changedTouches[0].clientY;
@@ -193,7 +218,7 @@ export default function PlayerPage({onOpenQueue}){
                     <div className="player-progress">
                         <span className="player-time">{formatTime(progress)}</span>
                         <input type="range" className="player-slider"
-                            style={{"--pct": duration ? (progress / duration * 100) + "%" : "0%"}}
+                            style={{background: `linear-gradient(to right, #1db954 ${duration ? (progress/duration*100) : 0}%, #444 ${duration ? (progress/duration*100) : 0}%)`}}
                             min={0} max={duration || 0} value={progress} onChange={handleSeek} />
                         <span className="player-time">{formatTime(duration)}</span>
                     </div>

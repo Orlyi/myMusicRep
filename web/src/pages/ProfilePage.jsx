@@ -2,14 +2,14 @@ import {useOutletContext, useNavigate} from "react-router-dom";
 import {useEffect, useState} from "react";
 import {getMyInfo, getRecentListens} from "../api/users.js";
 import {listFavorites} from "../api/favorites.js";
-import {myPlaylists} from "../api/playlists.js";
+import {myPlaylists, createPlaylist, deletePlaylist} from "../api/playlists.js";
+import {networkPlayUrl} from "../api/search.js";
 import useAuth from "../hooks/useAuth.js";
 import {SongItem} from "../components/SongItem.jsx";
+import {SearchSongItem} from "../components/SearchSongItem.jsx";
 import {PlaylistItem} from "../components/PlaylistItem.jsx";
 import "./ProfilePage.css"
 import {usePlayer} from "../layouts/PlayerContext.jsx";
-import {downloadSong} from "../api/songs.js";
-import {SearchSongItem} from "../components/SearchSongItem.jsx";
 
 export default function ProfilePage(){
     const {setHeaderContent} = useOutletContext()
@@ -21,24 +21,71 @@ export default function ProfilePage(){
     const [favorites, setFavorites] = useState([])
     const [history, setHistory] = useState([])
     const [playlists, setPlaylists] = useState([])
+    const [showCreate, setShowCreate] = useState(false)
+    const [createName, setCreateName] = useState("")
+    const [createIntro, setCreateIntro] = useState("")
     const {play, addToQueue, toggleLove, lovedSet, initLoveState, openDetail}= usePlayer()
 
-    const handlePlay = async (song) =>{
-        try{
-            const res = await downloadSong(song.song_id)
-            if(res.data?.download_url){
-                play(res.data, res.data.download_url)
+    // 统一播放逻辑：干净本地路径直接播，脏 CDN 走 network/play-url 刷新
+    const handlePlay = async (song) => {
+        try {
+            if (song.download_url && song.download_url.startsWith("/static/music")) {
+                play(song, song.download_url);
+                return;
             }
-        }catch (err){
-            console.log(err)
+            if (song.platform_id) {
+                const playRes = await networkPlayUrl({
+                    platform_id: song.platform_id,
+                    source: song.source || 'netease',
+                });
+                if (playRes.data?.url) {
+                    play(song, playRes.data.url);
+                    return;
+                }
+                if (playRes.data?.fail_reason) {
+                    console.warn(`⚠️ ${song.song_name} - ${playRes.data.fail_reason}`);
+                    return;
+                }
+            }
+            if (song.download_url) {
+                play(song, song.download_url);
+            }
+        } catch (err) {
+            console.log(err);
         }
-    }
+    };
 
     const handleSave = (song) => toggleLove(song)
 
     // "听过"的删除：从当前列表和 Redis 移除
     const handleHistoryDelete = (song) => {
         setHistory(prev => prev.filter(item => item.song_id !== song.song_id))
+    }
+
+    // 创建歌单
+    const handleCreatePlaylist = async () => {
+        if (!createName.trim()) return
+        try {
+            await createPlaylist({ playlist_name: createName.trim(), introduction: createIntro.trim() })
+            setCreateName("")
+            setCreateIntro("")
+            setShowCreate(false)
+            const res = await myPlaylists({ page: 1, page_size: 20 })
+            setPlaylists(res.data?.items || [])
+        } catch (err) {
+            console.log("创建歌单失败", err)
+        }
+    }
+
+    // 删除歌单
+    const handleDeletePlaylist = async (pl) => {
+        if (!window.confirm(`删除歌单「${pl.playlist_name}」？`)) return
+        try {
+            await deletePlaylist(pl.playlist_id)
+            setPlaylists(prev => prev.filter(p => p.playlist_id !== pl.playlist_id))
+        } catch (err) {
+            console.log("删除歌单失败", err)
+        }
     }
 
     useEffect(() => {
@@ -111,7 +158,6 @@ export default function ProfilePage(){
                                 onPlay={()=>handlePlay(item)}
                                 onAdd={() => addToQueue(item)}
                                 onMore={(s) => openDetail(s, null)}
-                                onClick={()=>handlePlay(item)}
                             />
                         ))}
                     </ul>
@@ -134,18 +180,34 @@ export default function ProfilePage(){
                     </ul>
                 )
             case 3:
-                return playlists.length === 0 ? (
-                    <span className="empty-hint">还没有歌单</span>
-                ) : (
-                    <ul className="song-list">
-                        {playlists.map(item=>(
-                            <PlaylistItem
-                                key={item.playlist_id}
-                                list={item}
-                                onOpen={(id) => navigate(`/playlist/${id}`)}
-                            />
-                        ))}
-                    </ul>
+                return (
+                    <>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5em 0.8em" }}>
+                            <span style={{ fontSize: "0.85em", color: "#999" }}>共 {playlists.length} 个歌单</span>
+                            <button
+                                onClick={() => setShowCreate(true)}
+                                style={{
+                                    background: "#333", color: "#fff", border: "none", borderRadius: "1.5em",
+                                    padding: "0.3em 0.8em", fontSize: "0.8em", cursor: "pointer",
+                                }}
+                            >+ 创建歌单</button>
+                        </div>
+
+                        {playlists.length === 0 ? (
+                            <span className="empty-hint">还没有歌单</span>
+                        ) : (
+                            <ul className="song-list">
+                                {playlists.map(item=>(
+                                    <PlaylistItem
+                                        key={item.playlist_id}
+                                        list={item}
+                                        onOpen={(id) => navigate(`/playlist/${id}`)}
+                                        onDelete={handleDeletePlaylist}
+                                    />
+                                ))}
+                            </ul>
+                        )}
+                    </>
                 )
         }
     }
@@ -155,7 +217,7 @@ export default function ProfilePage(){
             <section className="profile-info" onClick={()=>navigate("/profile/detail")}>
                 <div className="avatar">
                     {user?.avatar_url ? (
-                        <img src={`http://localhost:8000${user.avatar_url}`} alt="头像" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} />
+                        <img src={`http://serverIP:8000${user.avatar_url}`} alt="头像" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} />
                     ) : (
                         user?.user_name?.[0]?.toUpperCase() || "?"
                     )}
@@ -172,7 +234,65 @@ export default function ProfilePage(){
             <section className="profile-content">
                 {renderContent()}
             </section>
-            
+
+            {/* 创建歌单弹窗 */}
+            {showCreate && (
+                <div
+                    style={{
+                        position: "fixed", inset: 0, zIndex: 1000,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        background: "rgba(0,0,0,0.4)",
+                    }}
+                    onClick={() => setShowCreate(false)}
+                >
+                    <div
+                        style={{
+                            background: "#fff", borderRadius: 12, padding: "1.2em", width: "75vw", maxWidth: 300,
+                            display: "flex", flexDirection: "column", gap: "0.8em",
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <h3 style={{ margin: 0, fontSize: "1em" }}>创建歌单</h3>
+                        <input
+                            placeholder="歌单名称"
+                            value={createName}
+                            onChange={e => setCreateName(e.target.value)}
+                            style={{
+                                border: "1px solid #ddd", borderRadius: 8, padding: "0.6em", fontSize: "0.9em",
+                                outline: "none", width: "100%", boxSizing: "border-box",
+                            }}
+                            autoFocus
+                        />
+                        <input
+                            placeholder="简介（可选）"
+                            value={createIntro}
+                            onChange={e => setCreateIntro(e.target.value)}
+                            style={{
+                                border: "1px solid #ddd", borderRadius: 8, padding: "0.6em", fontSize: "0.9em",
+                                outline: "none", width: "100%", boxSizing: "border-box",
+                            }}
+                        />
+                        <div style={{ display: "flex", gap: "0.6em", justifyContent: "flex-end" }}>
+                            <button
+                                onClick={() => setShowCreate(false)}
+                                style={{
+                                    border: "1px solid #ddd", borderRadius: "1.5em", padding: "0.4em 1em",
+                                    background: "#fff", cursor: "pointer", fontSize: "0.85em",
+                                }}
+                            >取消</button>
+                            <button
+                                onClick={handleCreatePlaylist}
+                                style={{
+                                    background: "#333", color: "#fff", border: "none", borderRadius: "1.5em",
+                                    padding: "0.4em 1em", cursor: "pointer", fontSize: "0.85em",
+                                }}
+                            >创建</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div style={{height:"10vh"}}></div>
         </div>
     )
 }

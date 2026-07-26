@@ -7,9 +7,7 @@ export default function Sidebar({open, onClose, children}){
         <>
         {open && (<div className="overlay" onClick={onClose} />)}
         <div className={`sidebar ${open ? "open" : ""}`} >
-            <button onClick={() => logout()}>
-                退出登录
-            </button>
+
             {children}
         </div>
         </>

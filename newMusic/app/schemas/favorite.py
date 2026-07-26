@@ -7,7 +7,11 @@ class FavoriteSongResponse(BaseModel):
     artist_id: int | None = None
     artist_name: str | None = None
     album_id: int | None  = None
+    album_name: str | None = None
     picture_url: str | None  = None
+    source: str | None = None
+    platform_id: str | None = None
+    download_url: str | None = None
     is_love: bool = True
     create_time: datetime
 

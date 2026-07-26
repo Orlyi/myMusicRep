@@ -9,6 +9,7 @@ from app.models import Songs, PlayHistory, Users, Artists, UserSaveSong
 from app.schemas.common import APIResponse, PaginatedResponse
 from app.services.song_service import is_song_loved
 from app.schemas.song import SongBase, SongDetail
+from app.core.cache import cached
 
 router = APIRouter()
 
@@ -30,6 +31,8 @@ async def play_song(
     song.play_count += 1
     await db.flush()
 
+    from app.core.cache import cache_delete
+    await cache_delete("song:*")
     return APIResponse(data = {"play_count": song.play_count})
 
 
@@ -73,6 +76,8 @@ async def download_song(
         is_love = await is_song_loved(current_user.user_id, song_id, db)
 
     await db.flush()
+    from app.core.cache import cache_delete
+    await cache_delete("song:*")
     return APIResponse(data={
         "song_id": song.song_id,
         "song_name": song.song_name,
@@ -83,6 +88,7 @@ async def download_song(
     })
 
 @router.get("", response_model=APIResponse)
+@cached("song:list", ttl=300)
 async def list_songs(
         page: int = Query(default = 1, ge = 1),
         page_size: int = Query(default = 20, ge = 1, le=100),
@@ -150,6 +156,7 @@ async def list_songs(
 
 
 @router.get("/{song_id}/play-count", response_model=APIResponse)
+@cached("song:play-count", ttl=60)
 async def play_count(
         song_id: int,
         db: AsyncSession = Depends(get_db)):
@@ -164,6 +171,7 @@ async def play_count(
     return APIResponse(data={"play_count": count})
 
 @router.get("/{song_id}/download-count", response_model=APIResponse)
+@cached("song:dl-count", ttl=60)
 async def download_count(
         song_id: int,
         db: AsyncSession = Depends(get_db)):
@@ -184,6 +192,7 @@ async def download_count(
 
 
 @router.get("/{song_id}", response_model=APIResponse)
+@cached("song:detail", ttl=300)
 async def get_song(
         song_id: int,
         db: AsyncSession = Depends(get_db)):

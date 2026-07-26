@@ -13,3 +13,6 @@ export const networkSearch = (params) => client.get("/network/search", {params})
 
 // 播放地址
 export const networkPlayUrl = (params) => client.get("/network/play-url", {params})
+
+// 拉取专辑并存库 → 返回本地 album_id
+export const fetchAlbumDetail = (params) => client.get("/network/album-detail", {params: {...params, save: true}})

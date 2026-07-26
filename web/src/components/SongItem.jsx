@@ -8,11 +8,11 @@ export function SongItem({song, onPlay, onSave, onAdd, onMore}){
 
             <img src={song?.picture_url} alt="?" style={{height:"2.5em", borderRadius:"4px", aspectRatio:"1/1", objectFit: "cover"}}></img>
 
-            <div className="song-item-content" onClick={()=>onPlay?.(song.song_id)} style={{width:"60%",marginLeft:"0.5em"}}>
-                <div>
+            <div className="song-item-content" onClick={()=>onPlay?.(song.song_id)} style={{width:"60%",marginLeft:"0.5em",overflow:"hidden"}}>
+                <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                     {song?.song_name || "未知"}
                 </div>
-                <div style={{fontSize:"0.8em",color:"#727272"}}>
+                <div style={{fontSize:"0.8em",color:"#727272",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                     {song?.artist_name || "未知"}
                 </div>
             </div>

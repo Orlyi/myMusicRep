@@ -24,7 +24,7 @@ export function SearchSongItem({song, onPlay, onSave, onAdd, onMore}){
             <div className="search-song-actions" style={{display:"flex",gap:"0.6em"}}>
                 <Heart size="1em" fill={song.is_love? "#ff0000": "none"} color={song.is_love? "#ff0000": "currentColor"} onClick={(e) => { e.stopPropagation(); onSave?.(song); }}></Heart>
                 <ListPlus size="1em" onClick={(e) => { e.stopPropagation(); onAdd?.(song); }}></ListPlus>
-                <EllipsisVertical size="1em" onClick={(e) => { e.stopPropagation(); onMore?.(song); }}></EllipsisVertical>
+                {onMore && <EllipsisVertical size="1em" onClick={(e) => { e.stopPropagation(); onMore?.(song); }} />}
             </div>
         </div>
     )

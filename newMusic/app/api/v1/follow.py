@@ -7,6 +7,7 @@ from app.models import Users, Artists, UserDetails
 from app.models.user_follow_artist import UserFollowArtist
 from app.models.user_follow_user import UserFollowUser
 from app.schemas.common import APIResponse
+from app.core.cache import cache_delete
 
 router = APIRouter()
 
@@ -34,6 +35,7 @@ async def follow_artist(
         details.followed_count += 1
 
     await db.flush()
+    await cache_delete("user:*")
     return APIResponse(message="Artist followed successfully")
 
 @router.post("/user/{followed_id}", response_model=APIResponse)
@@ -70,6 +72,7 @@ async def follow_user(
         target_details.fans_count += 1
 
     await db.flush()
+    await cache_delete("user:*")
     return APIResponse(message="User followed successfully")
 
 @router.delete("/artist/{artist_id}", response_model=APIResponse)
@@ -94,6 +97,7 @@ async def unfollow_artist(
       details.followed_count -= 1
 
   await db.flush()
+  await cache_delete("user:*")
   return APIResponse(message="Unfollowed artist")
 
 
@@ -123,4 +127,5 @@ async def unfollow_user(
         target_detail.fans_count -= 1
 
     await db.flush()
+    await cache_delete("user:*")
     return APIResponse(message="Unfollowed user")

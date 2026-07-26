@@ -1,10 +1,241 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>无限滚动列表</title>
 </head>
 <body>
-$END$
+
+    <div id="root"></div>
+
+    <!-- ===== 引入 React 和 Babel ===== -->
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // ============================================================
+        // 1. 自定义 Hook：无限滚动
+        // ============================================================
+        function useInfiniteScroll({ fetchData, pageSize = 10 }) {
+            const [items, setItems] = useState([]);
+            const [page, setPage] = useState(1);
+            const [loading, setLoading] = useState(false);
+            const [hasMore, setHasMore] = useState(true);
+            const [error, setError] = useState(null);
+            const isFirstLoad = useRef(true);
+
+            const loadMore = useCallback(async () => {
+                if (loading || !hasMore) return;
+
+                setLoading(true);
+                setError(null);
+
+                try {
+                    const result = await fetchData(page, pageSize);
+
+                    if (result.data.length === 0 || page >= result.totalPages) {
+                        setHasMore(false);
+                    } else {
+                        setItems(prev => [...prev, ...result.data]);
+                        setPage(prev => prev + 1);
+                    }
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            }, [page, loading, hasMore, fetchData, pageSize]);
+
+            useEffect(() => {
+                if (isFirstLoad.current) {
+                    loadMore();
+                    isFirstLoad.current = false;
+                }
+            }, [loadMore]);
+
+            const refresh = useCallback(async () => {
+                setItems([]);
+                setPage(1);
+                setHasMore(true);
+                setError(null);
+                isFirstLoad.current = true;
+                await loadMore();
+            }, [loadMore]);
+
+            return { items, loading, hasMore, error, loadMore, refresh };
+        }
+
+        // ============================================================
+        // 2. 无限滚动组件
+        // ============================================================
+        function InfiniteScrollList({ fetchData, renderItem, pageSize = 10 }) {
+            const { items, loading, hasMore, error, loadMore, refresh } =
+                useInfiniteScroll({ fetchData, pageSize });
+
+            const observerRef = useRef(null);
+            const sentinelRef = useRef(null);
+
+            // Intersection Observer 检测滚动到底部
+            useEffect(() => {
+                if (observerRef.current) {
+                    observerRef.current.disconnect();
+                }
+
+                observerRef.current = new IntersectionObserver(
+                    (entries) => {
+                        if (entries[0].isIntersecting && hasMore && !loading) {
+                            loadMore();
+                        }
+                    },
+                    { threshold: 0.1 }
+                );
+
+                if (sentinelRef.current) {
+                    observerRef.current.observe(sentinelRef.current);
+                }
+
+                return () => observerRef.current?.disconnect();
+            }, [hasMore, loading, loadMore]);
+
+            // 下拉刷新（移动端）
+            const [pullDownY, setPullDownY] = useState(0);
+            const [isPulling, setIsPulling] = useState(false);
+
+            const handleTouchStart = (e) => {
+                if (window.scrollY === 0) {
+                    setIsPulling(true);
+                    setPullDownY(e.touches[0].clientY);
+                }
+            };
+
+            const handleTouchMove = (e) => {
+                if (isPulling) {
+                    const delta = e.touches[0].clientY - pullDownY;
+                    if (delta > 50) {
+                        refresh();
+                        setIsPulling(false);
+                    }
+                }
+            };
+
+            const handleTouchEnd = () => {
+                setIsPulling(false);
+            };
+
+            return (
+                <div
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                >
+                    {/* 下拉刷新提示 */}
+                    {isPulling && <div>释放刷新...</div>}
+
+                    {/* 列表内容 */}
+                    {items.map((item, index) => (
+                        <div key={item.id || index}>
+                            {renderItem(item, index)}
+                        </div>
+                    ))}
+
+                    {/* 占位元素（用于 Intersection Observer） */}
+                    <div ref={sentinelRef} style={{ height: '1px' }} />
+
+                    {/* 加载状态 */}
+                    {loading && <div>加载中...</div>}
+
+                    {/* 错误状态 */}
+                    {error && (
+                        <div>
+                            加载失败：{error}
+                            <button onClick={loadMore}>重试</button>
+                        </div>
+                    )}
+
+                    {/* 结束状态 */}
+                    {!hasMore && items.length > 0 && <div>已加载全部内容</div>}
+
+                    {/* 空状态 */}
+                    {!loading && items.length === 0 && !error && <div>暂无数据</div>}
+                </div>
+            );
+        }
+
+        // ============================================================
+        // 3. 使用示例
+        // ============================================================
+        function App() {
+            // 模拟 API（生成随机用户数据）
+            const fetchUsers = async (page, size) => {
+                // 模拟网络延迟
+                await new Promise(resolve => setTimeout(resolve, 800));
+
+                // 生成随机用户数据
+                const users = Array.from({ length: size }, (_, i) => ({
+                    id: (page - 1) * size + i + 1,
+                    name: `用户 ${(page - 1) * size + i + 1}`,
+                    email: `user${(page - 1) * size + i + 1}@example.com`,
+                    avatar: `https://i.pravatar.cc/48?img=${(page - 1) * size + i + 1}`
+                }));
+
+                // 模拟总共 5 页数据
+                const totalPages = 5;
+
+                return {
+                    data: users,
+                    totalPages: totalPages
+                };
+            };
+
+            return (
+                <div>
+                    <h1>📋 无限滚动列表</h1>
+                    <p>滚动到底部自动加载更多</p>
+
+                    <InfiniteScrollList
+                        fetchData={fetchUsers}
+                        renderItem={(user, index) => (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                padding: '12px',
+                                borderBottom: '1px solid #eee'
+                            }}>
+                                <img
+                                    src={user.avatar}
+                                    alt={user.name}
+                                    style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '50%'
+                                    }}
+                                />
+                                <div>
+                                    <div style={{ fontWeight: 'bold' }}>{user.name}</div>
+                                    <div style={{ color: '#999', fontSize: '13px' }}>{user.email}</div>
+                                </div>
+                                <div style={{ marginLeft: 'auto', color: '#ccc', fontSize: '12px' }}>
+                                    #{user.id}
+                                </div>
+                            </div>
+                        )}
+                        pageSize={10}
+                    />
+                </div>
+            );
+        }
+
+        // ============================================================
+        // 4. 渲染
+        // ============================================================
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+
 </body>
 </html>

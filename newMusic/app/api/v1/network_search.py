@@ -76,7 +76,11 @@ async def network_play_url_api(
     )
     song = result.scalar_one_or_none()
 
-    redis = await get_redis()
+    redis = None
+    try:
+        redis = await get_redis()
+    except Exception as e:
+        print(f"[play-url] Redis 不可用，降级: {e}")
     redis_key = f"{CDN_URL_PREFIX}{platform_id}"
     is_cdn = False
 
@@ -91,21 +95,16 @@ async def network_play_url_api(
                 "is_cdn": False,
             })
 
-        # 只有 CDN 链接 → 先查 Redis 缓存
-        cached_url = await redis.get(redis_key)
-        if cached_url:
-            return APIResponse(data={
-                "url": cached_url,
-                "song_id": song.song_id,
-                "picture_url": song.picture_url or "",
-                "from_cache": True,
-                "is_cdn": True,
-            })
-
-        # 本地文件是否存在（上次下载成功的）
+        # 本地文件是否存在（上次下载成功的）→ 优先，即使 DB 里还是旧 CDN 链
         local_path = Path("uploads") / "music" / f"{song.song_id}.mp3"
         if local_path.exists():
             song.download_url = f"/static/music/{song.song_id}.mp3"
+            # 顺手清掉 Redis 里的旧 CDN 缓存
+            if redis:
+                try:
+                    await redis.delete(redis_key)
+                except Exception:
+                    pass
             await db.commit()
             return APIResponse(data={
                 "url": song.download_url,
@@ -115,18 +114,46 @@ async def network_play_url_api(
                 "is_cdn": False,
             })
 
-        # Redis 也没有、本地也没有 → 调 API 重新获取 CDN 链
-        url = await network_get_play_url(platform_id, source, sign)
-        if url:
-            await redis.setex(redis_key, CDN_URL_TTL, url)
-            song.download_url = url
-            await db.commit()
+        # 只有 CDN 链接 → 先查 Redis 缓存（Redis 不可用时跳过）
+        cached_url = None
+        if redis:
+            try:
+                cached_url = await redis.get(redis_key)
+            except Exception:
+                pass
+        if cached_url:
             return APIResponse(data={
-                "url": url,
+                "url": cached_url,
+                "song_id": song.song_id,
+                "picture_url": song.picture_url or "",
+                "from_cache": True,
+                "is_cdn": True,
+            })
+
+        # Redis 也没有 → 调 API 重新获取 CDN 链
+        url, reason = await network_get_play_url(platform_id, source, sign)
+        if url:
+            if redis:
+                try:
+                    await redis.setex(redis_key, CDN_URL_TTL, url)
+                except Exception:
+                    pass
+
+            # 后台下载到本地，成功后覆盖为 /static/music/{id}.mp3
+            # 不阻塞返回，前端的 resolveUrl 会走 audio-proxy
+            local_path = await _download_mp3(url, song.song_id)
+            if local_path:
+                song.download_url = f"/static/music/{song.song_id}.mp3"
+            else:
+                song.download_url = url
+            await db.commit()
+
+            return APIResponse(data={
+                "url": song.download_url,
                 "song_id": song.song_id,
                 "picture_url": song.picture_url or "",
                 "from_cache": False,
-                "is_cdn": True,
+                "is_cdn": not (song.download_url and song.download_url.startswith("/static")),
             })
 
         # API 也失败了 → 返回 DB 里的旧链接
@@ -136,12 +163,14 @@ async def network_play_url_api(
             "picture_url": song.picture_url or "",
             "from_cache": True,
             "is_cdn": True,
+            "fail_reason": reason or "获取播放地址失败",
         })
 
     # 调破解接口
-    url = await network_get_play_url(platform_id, source, sign)
+    url, reason = await network_get_play_url(platform_id, source, sign)
     if not url:
-        return APIResponse(code=404, message="获取播放地址失败")
+        print(f"[play-url] ❌ 获取播放地址失败 platform_id={platform_id} source={source} reason={reason}")
+        return APIResponse(code=404, message=reason or "获取播放地址失败", data={"fail_reason": reason})
 
     song_id = None
 
@@ -290,6 +319,7 @@ async def network_play_url_api(
                     cover_url=album_cover_url or picture_url or "",
                     source=source,
                     artist_id=matched_album_artist_id,
+                    songs_count=0,  # 先置 0，后面创建歌曲后递增
                 )
                 db.add(db_album)
                 await db.flush()
@@ -308,6 +338,10 @@ async def network_play_url_api(
     db.add(song)
     await db.flush()
     song_id = song.song_id
+
+    # 递增专辑歌曲数
+    if album_id and matched_album_artist_id:
+        db_album.songs_count += 1
 
     # 写入多歌手关联表
     if real_artist_platform_ids:
@@ -343,8 +377,12 @@ async def network_play_url_api(
 
     await db.commit()
 
-    # 缓存 CDN URL 到 Redis（即使下载失败，Redis 里的链还能用 CDN_TTL 时间）
-    await redis.setex(redis_key, CDN_URL_TTL, url)
+    # 缓存 CDN URL 到 Redis（Redis 不可用时跳过）
+    if redis:
+        try:
+            await redis.setex(redis_key, CDN_URL_TTL, url)
+        except Exception:
+            pass
 
     # 下载歌曲到本地永久保存（后台任务，不阻塞返回）
     local_path = await _download_mp3(url, song_id)
@@ -456,10 +494,146 @@ async def network_song_detail_api(
 async def network_album_detail_api(
     platform_id: str = Query(min_length=1),
     source: str = Query(default="netease"),
+    save: bool = Query(default=False, description="是否存库并返回本地 album_id"),
+    db: AsyncSession = Depends(get_db),
 ):
-    """获取专辑详情（含歌曲列表）"""
+    """
+    获取专辑详情（含歌曲列表）
+    save=true 时同时存入数据库，返回本地 album_id
+    """
     results = await network_get_album_detail(platform_id, source)
-    return APIResponse(data=[r.model_dump() for r in results])
+    if not results:
+        return APIResponse(code=404, message="获取专辑信息失败")
+
+    print(f"[album-detail] save={save}, type={type(save).__name__}")
+
+    if not save:
+        return APIResponse(data=[r.model_dump() for r in results])
+
+    # ---- save=true：存库逻辑 ----
+    album_info = results[0]
+    songs_info = results[1:]
+    album_pid = album_info.platform_id or platform_id
+    album_name = album_info.album_name or album_info.name or ""
+    album_cover = album_info.picture_url or ""
+    album_artist_names = album_info.artist_names or ""
+
+    # 查找或创建专辑主歌手
+    main_artist_id = None
+    if album_artist_names:
+        db_artist = await db.execute(
+            select(Artists).where(
+                Artists.artist_name == album_artist_names,
+                Artists.source == source,
+            ).limit(1)
+        )
+        db_artist = db_artist.scalar_one_or_none()
+        if not db_artist:
+            db_artist = Artists(artist_name=album_artist_names, source=source)
+            db.add(db_artist)
+            await db.flush()
+        main_artist_id = db_artist.artist_id
+
+    # Upsert 专辑
+    db_album = await db.execute(
+        select(Albums).where(Albums.platform_id == album_pid, Albums.source == source).limit(1)
+    )
+    db_album = db_album.scalar_one_or_none()
+    if db_album:
+        db_album.album_name = album_name
+        db_album.cover_url = album_cover or db_album.cover_url
+        db_album.songs_count = len(songs_info)
+    else:
+        db_album = Albums(
+            platform_id=album_pid, album_name=album_name, cover_url=album_cover,
+            source=source, artist_id=main_artist_id, songs_count=len(songs_info),
+        )
+        db.add(db_album)
+    await db.flush()
+    local_album_id = db_album.album_id
+
+    # 遍历歌曲
+    for song_item in songs_info:
+        song_pid = song_item.platform_id
+        if not song_pid: continue
+
+        # 解析歌手
+        song_artist_id = main_artist_id
+        artist_pids, artist_names_list = [], []
+        for art in (song_item.artists or []):
+            aid = art.get("id") or art.get("artistId")
+            if aid:
+                artist_pids.append(str(aid))
+                artist_names_list.append(art.get("name", ""))
+
+        # 创建/查找歌手
+        for i, rid in enumerate(artist_pids):
+            aname = artist_names_list[i] if i < len(artist_names_list) else ""
+            db_art = await db.execute(
+                select(Artists).where(Artists.platform_id == rid, Artists.source == source).limit(1)
+            )
+            db_art = db_art.scalar_one_or_none()
+            if not db_art:
+                db_art = Artists(artist_name=aname, platform_id=rid, source=source)
+                db.add(db_art)
+                await db.flush()
+            if i == 0: song_artist_id = db_art.artist_id
+
+        # 创建/更新歌曲
+        db_song = await db.execute(
+            select(Songs).where(Songs.platform_id == song_pid, Songs.source == source).limit(1)
+        )
+        db_song = db_song.scalar_one_or_none()
+        if db_song:
+            db_song.album_id = local_album_id
+            db_song.song_name = song_item.name or db_song.song_name
+            db_song.picture_url = song_item.picture_url or db_song.picture_url
+            db_song.artist_id = song_artist_id or db_song.artist_id
+        else:
+            db_song = Songs(
+                platform_id=song_pid, song_name=song_item.name or "",
+                artist_id=song_artist_id, album_id=local_album_id,
+                picture_url=song_item.picture_url or album_cover, source=source,
+            )
+            db.add(db_song)
+            await db.flush()
+
+        # ArtistSingSong
+        if artist_pids:
+            for rid in artist_pids:
+                ass_art = await db.execute(
+                    select(Artists).where(Artists.platform_id == rid, Artists.source == source).limit(1)
+                )
+                ass_art = ass_art.scalar_one_or_none()
+                if ass_art:
+                    existing = await db.execute(
+                        select(ArtistSingSong).where(
+                            ArtistSingSong.artist_id == ass_art.artist_id,
+                            ArtistSingSong.song_id == db_song.song_id,
+                        ).limit(1)
+                    )
+                    if not existing.scalar_one_or_none():
+                        db.add(ArtistSingSong(artist_id=ass_art.artist_id, song_id=db_song.song_id))
+
+        # 播放地址
+        try:
+            pu, _ = await network_get_play_url(song_pid, source)
+            if pu and pu != db_song.download_url: db_song.download_url = pu
+        except Exception: pass
+
+        # 歌词
+        if not db_song.lyric_id:
+            try:
+                lrc = await network_get_lyric(song_pid, source)
+                if lrc:
+                    dl = Lyrics(song_id=db_song.song_id, lyric_text=lrc)
+                    db.add(dl)
+                    await db.flush()
+                    db_song.lyric_id = dl.lyric_id
+            except Exception: pass
+
+    await db.commit()
+    return APIResponse(data={"album_id": local_album_id, "songs_count": len(songs_info)})
 
 
 @router.get("/artist-detail", response_model=APIResponse)

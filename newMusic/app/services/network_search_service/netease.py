@@ -27,6 +27,7 @@ class NeteaseSearcher(BaseSearcher):
     def __init__(self, cookie: str | None = None):
         self._client: httpx.AsyncClient | None = None
         self._cookie = cookie or ""
+        self.play_url_fail_reason: str | None = None  # 上一次 get_play_url 失败原因
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -177,13 +178,32 @@ class NeteaseSearcher(BaseSearcher):
 
     async def get_play_url(self, platform_id: str, sign: str | None = None) -> str | None:
         """获取播放地址（复用 spiders/encrypt.py 的 AES + RSA 加密破解）"""
-        return await asyncio.to_thread(self._get_play_url_sync, platform_id)
+        import sys
+        print(f"[play-url-async] 进入 get_play_url platform_id={platform_id}", flush=True)
+        sys.stderr.flush()
+        result = await asyncio.to_thread(self._get_play_url_sync, platform_id)
+        print(f"[play-url-async] _get_play_url_sync 返回: {result}", flush=True)
+        return result
 
     def _get_play_url_sync(self, platform_id: str) -> str | None:
+        self.play_url_fail_reason = None  # 重置
+
+        def debug(msg):
+            import sys
+            print(f"[play-url] {msg}", flush=True)
+            sys.stderr.write(f"[play-url] {msg}\n")
+            sys.stderr.flush()
+
         try:
             from encrypt import get_encrypted_params
             encrypted = get_encrypted_params(int(platform_id))
-        except Exception:
+        except ImportError as e:
+            debug(f"encrypt 模块导入失败: {e}")
+            self.play_url_fail_reason = "解密模块加载失败"
+            return None
+        except Exception as e:
+            debug(f"get_encrypted_params 失败: {e}")
+            self.play_url_fail_reason = "参数加密失败"
             return None
 
         data = {"params": encrypted["params"], "encSecKey": encrypted["encSecKey"]}
@@ -193,18 +213,70 @@ class NeteaseSearcher(BaseSearcher):
             "Content-Type": "application/x-www-form-urlencoded",
             "Cookie": self._cookie,
         }
+        # 从 Cookie 中提取 csrf_token 拼到 URL
+        csrf_token = ""
+        for part in self._cookie.split(";"):
+            part = part.strip()
+            if part.startswith("__csrf="):
+                csrf_token = part[len("__csrf="):]
+                break
+        play_url = PLAY_URL
+        if csrf_token:
+            play_url += f"?csrf_token={csrf_token}"
+        debug(f"请求 platform_id={platform_id}, csrf_token={csrf_token[:10] if csrf_token else '无'}, cookie前20={repr(self._cookie[:20]) if self._cookie else '空'}")
 
         try:
             import requests as sync_req
-            resp = sync_req.post(PLAY_URL, data=data, headers=headers, timeout=10)
+            resp = sync_req.post(play_url, data=data, headers=headers, timeout=10)
+            debug(f"响应 status={resp.status_code}")
             if resp.status_code != 200:
+                debug(f"状态码异常 {resp.status_code}: {resp.text[:200]}")
+                self.play_url_fail_reason = f"网易云响应状态码异常: {resp.status_code}"
                 return None
             result = resp.json()
-            if result.get("code") == 200 and result.get("data"):
-                return result["data"][0].get("url")
-        except Exception:
+            code = result.get("code")
+            data_arr = result.get("data", [])
+            debug(f"API code={code}, data条数={len(data_arr)}")
+            if code != 200:
+                debug(f"网易云返回错误码 {code}, msg={result.get('message','')}, 完整响应={str(result)[:300]}")
+                self.play_url_fail_reason = f"网易云API返回错误: {result.get('message', '')}"
+                return None
+            if not data_arr:
+                debug(f"data 为空数组, 完整响应={str(result)[:300]}")
+                self.play_url_fail_reason = "歌曲不存在或已下架"
+                return None
+            url = data_arr[0].get("url")
+            if not url:
+                fee = data_arr[0].get("fee", -1)
+                free_trial = data_arr[0].get("freeTrialInfo")
+                if fee == 1:
+                    debug(f"❌ VIP歌曲，需要会员：fee={fee}, freeTrialInfo={free_trial}")
+                    self.play_url_fail_reason = "VIP歌曲，需开通网易云会员"
+                elif fee == 4:
+                    debug(f"❌ 数字专辑需购买：fee={fee}")
+                    self.play_url_fail_reason = "数字专辑，需单独购买"
+                elif fee == 8:
+                    debug(f"❌ 仅试听片段：fee={fee}")
+                    self.play_url_fail_reason = "仅提供试听片段"
+                else:
+                    debug(f"❌ url为空，fee={fee}, freeTrialInfo={free_trial}, data[0]={str(data_arr[0])[:200]}")
+                    self.play_url_fail_reason = f"无法获取播放地址(fee={fee})"
+            else:
+                debug(f"✅ 获取到 url (前80): {url[:80]}")
+            return url
+        except requests.exceptions.Timeout as e:
+            debug(f"请求超时: {e}")
+            self.play_url_fail_reason = "请求网易云超时"
             return None
-        return None
+        except requests.exceptions.ConnectionError as e:
+            debug(f"连接失败: {e}")
+            self.play_url_fail_reason = "无法连接网易云服务器"
+            return None
+        except Exception as e:
+            import traceback
+            debug(f"未知异常: {e}\n{traceback.format_exc()}")
+            self.play_url_fail_reason = f"获取播放地址异常: {str(e)[:60]}"
+            return None
 
     def _parse_song(self, s: dict) -> NeteaseSearchResult:
         """统一解析歌曲 JSON（兼容全称和缩写两种格式）"""

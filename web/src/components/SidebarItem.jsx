@@ -15,3 +15,12 @@ export function SideItem({path, from, content, onClose}){
         </div>
     )
 }
+
+// 无右侧箭头的纯展示项
+export function SideLabel({content}){
+    return (
+        <div className="sidebar-item" style={{cursor:"default"}}>
+            <div className="sidebar-item-font">{content}</div>
+        </div>
+    )
+}

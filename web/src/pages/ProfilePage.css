@@ -1,8 +1,15 @@
 .profile-page{
     display: flex;
     flex-direction: column;
-    height: 100%;
-    overflow: auto;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+.profile-content{
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+
 }
 
 /* 加载状态 */

@@ -1,10 +1,631 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8" />
+    <title>评论系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+
+        .app {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .app-title {
+            font-size: 24px;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #f0f2f5;
+        }
+
+        /* ===== 评论输入 ===== */
+        .comment-input {
+            margin-bottom: 24px;
+        }
+        .comment-input textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e8ecf1;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.2s;
+            min-height: 80px;
+        }
+        .comment-input textarea:focus {
+            outline: none;
+            border-color: #1890ff;
+        }
+        .comment-input .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: flex-end;
+        }
+        .comment-input button {
+            padding: 8px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #1890ff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #40a9ff;
+        }
+        .btn-primary:disabled {
+            background: #d9d9d9;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: #f0f2f5;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #e4e7ec;
+        }
+        .btn-danger {
+            background: #ff4d4f;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #ff7875;
+        }
+
+        /* ===== 评论列表 ===== */
+        .comment-list {
+            margin-top: 16px;
+        }
+        .empty {
+            text-align: center;
+            padding: 40px 0;
+            color: #bfbfbf;
+            font-size: 14px;
+        }
+
+        /* ===== 单条评论 ===== */
+        .comment-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .comment-item:last-child {
+            border-bottom: none;
+        }
+
+        .comment-body {
+            position: relative;
+        }
+
+        .comment-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+        .comment-user {
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 14px;
+        }
+        .comment-user .badge {
+            background: #1890ff;
+            color: white;
+            font-size: 10px;
+            padding: 1px 8px;
+            border-radius: 10px;
+            margin-left: 6px;
+        }
+        .comment-time {
+            color: #bfbfbf;
+            font-size: 12px;
+        }
+
+        .comment-content {
+            color: #333;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+            word-wrap: break-word;
+        }
+
+        .comment-actions {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        .comment-actions button {
+            background: none;
+            border: none;
+            font-size: 13px;
+            color: #8c8c8c;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .comment-actions button:hover {
+            background: #f0f2f5;
+            color: #333;
+        }
+        .comment-actions .like-btn {
+            color: #8c8c8c;
+        }
+        .comment-actions .like-btn.active {
+            color: #1890ff;
+        }
+        .comment-actions .like-btn.active:hover {
+            background: #e6f7ff;
+        }
+        .comment-actions .delete-btn:hover {
+            color: #ff4d4f;
+        }
+
+        /* ===== 回复输入 ===== */
+        .reply-input {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .reply-input input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 2px solid #e8ecf1;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        .reply-input input:focus {
+            outline: none;
+            border-color: #1890ff;
+        }
+        .reply-input button {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        /* ===== 回复列表 ===== */
+        .replies {
+            margin-top: 8px;
+            padding-left: 20px;
+            border-left: 2px solid #f0f2f5;
+        }
+        .reply-toggle {
+            color: #1890ff;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 4px 0;
+            user-select: none;
+        }
+        .reply-toggle:hover {
+            color: #40a9ff;
+        }
+
+        /* ===== 加载状态 ===== */
+        .loading-more {
+            text-align: center;
+            padding: 16px 0;
+            color: #bfbfbf;
+            font-size: 13px;
+        }
+        .loading-more::after {
+            content: '';
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-left: 8px;
+            border: 2px solid #e8ecf1;
+            border-top-color: #1890ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
 </head>
 <body>
-$END$
+
+    <div id="root"></div>
+
+    <!-- ===== 引入 React 和 Babel ===== -->
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useCallback, useMemo, useRef } = React;
+
+        // ============================================================
+        // 1. 初始数据
+        // ============================================================
+        const initialComments = [{
+            id: 1,
+            user: '张三',
+            content: '这是一条评论',
+            time: '2024-01-01 10:00:00',
+            likes: 10,
+            isLiked: false,
+            replies: [{
+                id: 2,
+                user: '李四',
+                content: '这是回复',
+                time: '2024-01-01 11:00:00',
+                likes: 5,
+                isLiked: false,
+                replies: [{
+                    id: 3,
+                    user: '王五',
+                    content: '这是子回复',
+                    time: '2024-01-01 12:00:00',
+                    likes: 2,
+                    isLiked: false,
+                    replies: []
+                }]
+            }]
+        }];
+
+        // ============================================================
+        // 2. 单条评论组件
+        // ============================================================
+        const CommentItem = ({
+            comment,
+            onReply,
+            onLike,
+            onDelete,
+            depth = 0,
+            maxDepth = 5
+        }) => {
+            const [showReplies, setShowReplies] = useState(true);
+            const [showReplyInput, setShowReplyInput] = useState(false);
+            const [replyContent, setReplyContent] = useState('');
+
+            const hasReplies = comment.replies && comment.replies.length > 0;
+
+            // 🔥 防止过深递归
+            if (depth > maxDepth) {
+                return (
+                    <div className="comment-item" style={{ paddingLeft: depth * 20 }}>
+                        <div className="comment-body">
+                            <div style={{ color: '#999', fontSize: '13px' }}>
+                                ⚠️ 回复层级过深，已折叠
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            const handleReply = () => {
+                if (replyContent.trim()) {
+                    onReply(comment.id, replyContent);
+                    setReplyContent('');
+                    setShowReplyInput(false);
+                }
+            };
+
+            return (
+                <div className="comment-item" style={{ paddingLeft: Math.min(depth * 20, 60) }}>
+                    <div className="comment-body">
+                        {/* 评论头部 */}
+                        <div className="comment-header">
+                            <span className="comment-user">
+                                {comment.user}
+                                {depth === 0 && <span className="badge">楼主</span>}
+                            </span>
+                            <span className="comment-time">{comment.time}</span>
+                        </div>
+
+                        {/* 评论内容 */}
+                        <div className="comment-content">{comment.content}</div>
+
+                        {/* 操作按钮 */}
+                        <div className="comment-actions">
+                            <button
+                                className={`like-btn ${comment.isLiked ? 'active' : ''}`}
+                                onClick={() => onLike(comment.id)}
+                            >
+                                {comment.isLiked ? '❤️' : '🤍'} {comment.likes}
+                            </button>
+                            <button onClick={() => setShowReplyInput(!showReplyInput)}>
+                                💬 回复
+                            </button>
+                            <button
+                                className="delete-btn"
+                                onClick={() => {
+                                    if (window.confirm('确定要删除这条评论吗？')) {
+                                        onDelete(comment.id);
+                                    }
+                                }}
+                            >
+                                🗑️ 删除
+                            </button>
+                        </div>
+
+                        {/* 回复输入框 */}
+                        {showReplyInput && (
+                            <div className="reply-input">
+                                <input
+                                    type="text"
+                                    value={replyContent}
+                                    onChange={(e) => setReplyContent(e.target.value)}
+                                    placeholder={`回复 ${comment.user}...`}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleReply()}
+                                    autoFocus
+                                />
+                                <button className="btn-primary" onClick={handleReply}>
+                                    发送
+                                </button>
+                                <button className="btn-secondary" onClick={() => setShowReplyInput(false)}>
+                                    取消
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 回复列表 */}
+                    {hasReplies && (
+                        <div className="replies">
+                            <div
+                                className="reply-toggle"
+                                onClick={() => setShowReplies(!showReplies)}
+                            >
+                                {showReplies ? '▼ 收起' : '▶ 展开'} {comment.replies.length} 条回复
+                            </div>
+
+                            {showReplies && (
+                                <div>
+                                    {comment.replies.map(reply => (
+                                        <CommentItem
+                                            key={reply.id}
+                                            comment={reply}
+                                            onReply={onReply}
+                                            onLike={onLike}
+                                            onDelete={onDelete}
+                                            depth={depth + 1}
+                                            maxDepth={maxDepth}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // ============================================================
+        // 3. 评论列表组件
+        // ============================================================
+        const CommentList = ({ initialData = [] }) => {
+            const [comments, setComments] = useState(initialData);
+            const [newComment, setNewComment] = useState('');
+            const [isSubmitting, setIsSubmitting] = useState(false);
+            const textareaRef = useRef(null);
+
+            // 添加顶级评论
+            const addComment = useCallback(async () => {
+                const trimmed = newComment.trim();
+                if (!trimmed || isSubmitting) return;
+
+                setIsSubmitting(true);
+
+                // 模拟异步提交
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                const comment = {
+                    id: Date.now(),
+                    user: '当前用户',
+                    content: trimmed,
+                    time: new Date().toLocaleString(),
+                    likes: 0,
+                    isLiked: false,
+                    replies: []
+                };
+
+                setComments(prev => [comment, ...prev]);
+                setNewComment('');
+                setIsSubmitting(false);
+
+                // 聚焦到输入框
+                textareaRef.current?.focus();
+            }, [newComment, isSubmitting]);
+
+            // 🔥 递归添加回复
+            const addReply = useCallback((parentId, content) => {
+                const addReplyRecursive = (items) => {
+                    return items.map(item => {
+                        if (item.id === parentId) {
+                            return {
+                                ...item,
+                                replies: [
+                                    ...item.replies,
+                                    {
+                                        id: Date.now() + Math.random(),
+                                        user: '当前用户',
+                                        content: content,
+                                        time: new Date().toLocaleString(),
+                                        likes: 0,
+                                        isLiked: false,
+                                        replies: []
+                                    }
+                                ]
+                            };
+                        }
+                        if (item.replies && item.replies.length > 0) {
+                            return {
+                                ...item,
+                                replies: addReplyRecursive(item.replies)
+                            };
+                        }
+                        return item;
+                    });
+                };
+
+                setComments(prev => addReplyRecursive(prev));
+            }, []);
+
+            // 🔥 递归切换点赞
+            const toggleLike = useCallback((commentId) => {
+                const toggleLikeRecursive = (items) => {
+                    return items.map(item => {
+                        if (item.id === commentId) {
+                            return {
+                                ...item,
+                                likes: item.isLiked ? item.likes - 1 : item.likes + 1,
+                                isLiked: !item.isLiked
+                            };
+                        }
+                        if (item.replies && item.replies.length > 0) {
+                            return {
+                                ...item,
+                                replies: toggleLikeRecursive(item.replies)
+                            };
+                        }
+                        return item;
+                    });
+                };
+
+                setComments(prev => toggleLikeRecursive(prev));
+            }, []);
+
+            // 🔥 递归删除评论
+            const deleteComment = useCallback((commentId) => {
+                const deleteRecursive = (items) => {
+                    return items
+                        .filter(item => item.id !== commentId)
+                        .map(item => ({
+                            ...item,
+                            replies: item.replies ? deleteRecursive(item.replies) : []
+                        }));
+                };
+
+                setComments(prev => deleteRecursive(prev));
+            }, []);
+
+            // 统计评论总数
+            const totalComments = useMemo(() => {
+                const countReplies = (items) => {
+                    let count = items.length;
+                    items.forEach(item => {
+                        if (item.replies && item.replies.length > 0) {
+                            count += countReplies(item.replies);
+                        }
+                    });
+                    return count;
+                };
+                return countReplies(comments);
+            }, [comments]);
+
+            return (
+                <div className="app">
+                    <h1 className="app-title">
+                        💬 评论区
+                        <span style={{
+                            fontSize: '14px',
+                            fontWeight: 'normal',
+                            color: '#bfbfbf',
+                            marginLeft: '12px'
+                        }}>
+                            共 {totalComments} 条评论
+                        </span>
+                    </h1>
+
+                    {/* 输入框 */}
+                    <div className="comment-input">
+                        <textarea
+                            ref={textareaRef}
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="发表评论..."
+                            rows={3}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                    addComment();
+                                }
+                            }}
+                        />
+                        <div className="actions">
+                            <span style={{
+                                fontSize: '12px',
+                                color: '#bfbfbf',
+                                alignSelf: 'center'
+                            }}>
+                                Ctrl+Enter 快速提交
+                            </span>
+                            <button
+                                className="btn-primary"
+                                onClick={addComment}
+                                disabled={isSubmitting || !newComment.trim()}
+                            >
+                                {isSubmitting ? '提交中...' : '发表评论'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 评论列表 */}
+                    <div className="comment-list">
+                        {comments.length === 0 ? (
+                            <div className="empty">😊 暂无评论，快来发表吧！</div>
+                        ) : (
+                            comments.map(comment => (
+                                <CommentItem
+                                    key={comment.id}
+                                    comment={comment}
+                                    onReply={addReply}
+                                    onLike={toggleLike}
+                                    onDelete={deleteComment}
+                                    depth={0}
+                                    maxDepth={5}
+                                />
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // ============================================================
+        // 4. App
+        // ============================================================
+        function App() {
+            return <CommentList initialData={initialComments} />;
+        }
+
+        // ============================================================
+        // 5. 渲染
+        // ============================================================
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+
 </body>
 </html>

@@ -7,10 +7,12 @@ from app.schemas.common import APIResponse, PaginatedResponse
 from app.schemas.artist import ArtistBase, ArtistDetail
 from app.schemas.song import SongBase
 from app.schemas.album import AlbumBase
+from app.core.cache import cached
 
 router = APIRouter()
 
 @router.get("",response_model=APIResponse)
+@cached("art:list", ttl=300)
 async def list_artists(
         page: int = Query(default=1,ge=1),
         page_size: int = Query(default=20,ge=1, le=100),
@@ -43,6 +45,7 @@ async def list_artists(
 
 
 @router.get("/{artist_id}/songs", response_model=APIResponse)
+@cached("art:songs", ttl=300)
 async def artist_songs(
         artist_id: int,
         page: int = Query(default=1,ge=1),
@@ -60,18 +63,34 @@ async def artist_songs(
     total = total_result.scalar() or 0
 
     result = await db.execute(
-        select(Songs)
+        select(Songs, Artists.artist_name)
         .join(ArtistSingSong, Songs.song_id == ArtistSingSong.song_id)
+        .outerjoin(Artists, Songs.artist_id == Artists.artist_id)
         .where(ArtistSingSong.artist_id == artist_id)
         .order_by(Songs.create_time.desc())
         .offset((page - 1)* page_size)
         .limit(page_size)
     )
-    songs = result.scalars().all()
+    rows = result.all()
 
     return APIResponse(
         data=PaginatedResponse(
-            items=[SongBase.model_validate(s) for s in songs],
+            items=[
+                {
+                    "song_id": s.song_id,
+                    "song_name": s.song_name,
+                    "artist_id": s.artist_id,
+                    "artist_name": artist_name or "",
+                    "album_id": s.album_id,
+                    "picture_url": s.picture_url,
+                    "source": s.source,
+                    "download_url": s.download_url,
+                    "download_count": s.download_count,
+                    "play_count": s.play_count,
+                    "is_love": False,
+                }
+                for s, artist_name in rows
+            ],
             total=total,
             page=page,
             page_size=page_size
@@ -79,6 +98,7 @@ async def artist_songs(
     )
 
 @router.get("/{artist_id}/albums", response_model=APIResponse)
+@cached("art:albums", ttl=300)
 async def artist_albums(
         artist_id: int,
         page: int = Query(default=1,ge=1),
@@ -96,17 +116,29 @@ async def artist_albums(
     total = total_result.scalar() or 0
 
     result = await db.execute(
-        select(Albums)
+        select(Albums, Artists.artist_name)
+        .outerjoin(Artists, Albums.artist_id == Artists.artist_id)
         .where(Albums.artist_id == artist_id)
         .order_by(Albums.create_time.desc())
         .offset((page - 1)* page_size)
         .limit(page_size)
     )
-    albums = result.scalars().all()
+    rows = result.all()
 
     return APIResponse(
         data=PaginatedResponse(
-            items=[AlbumBase.model_validate(a) for a in albums],
+            items=[
+                {
+                    "album_id": a.album_id,
+                    "album_name": a.album_name,
+                    "artist_id": a.artist_id,
+                    "artist_name": artist_name or "",
+                    "cover_url": a.cover_url,
+                    "source": a.source,
+                    "songs_count": a.songs_count,
+                }
+                for a, artist_name in rows
+            ],
             total=total,
             page=page,
             page_size=page_size
@@ -114,6 +146,7 @@ async def artist_albums(
     )
 
 @router.get("/{artist_id}",response_model=APIResponse)
+@cached("art:detail", ttl=300)
 async def get_artist(artist_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Artists).where(Artists.artist_id == artist_id))
     artist = result.scalar_one_or_none()

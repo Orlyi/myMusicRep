@@ -6,6 +6,7 @@ from app.core.deps import get_current_user
 from app.models import Users, UserSaveSong, Songs, UserSavePlaylist, UserSaveAlbum, Playlists, Albums, Artists
 from app.schemas.common import APIResponse, PaginatedResponse
 from app.schemas.favorite import FavoriteSongResponse, FavoritePlaylistResponse, FavoriteAlbumResponse
+from app.core.cache import cached, cache_delete
 
 router = APIRouter()
 
@@ -25,6 +26,7 @@ async def save_song(
 
     db.add(UserSaveSong(user_id=current_user.user_id, song_id=song_id))
     await db.flush()
+    await cache_delete("fav:*")
     return APIResponse(message="Song saved")
 
 
@@ -45,6 +47,7 @@ async def save_playlist(
 
     db.add(UserSavePlaylist(playlist_id=playlist_id, user_id=current_user.user_id))
     await db.flush()
+    await cache_delete("fav:*")
     return APIResponse(message="Playlist saved")
 
 
@@ -64,10 +67,12 @@ async def save_album(
 
     db.add(UserSaveAlbum(user_id=current_user.user_id, album_id=album_id))
     await db.flush()
+    await cache_delete("fav:*")
     return APIResponse(message="Album saved")
 
 
 @router.get("/list", response_model=APIResponse)
+@cached("fav:list", ttl=120)
 async def list_favorites(
         type: str = Query(..., pattern="^(song|album|playlist)$"),
         page: int = Query(1, ge=1),
@@ -76,9 +81,10 @@ async def list_favorites(
         db: AsyncSession = Depends(get_db)):
     if type == "song":
         base = (
-            select(Songs.song_id, Songs.song_name, Songs.artist_id, Songs.album_id, Songs.picture_url, UserSaveSong.create_time, Artists.artist_name)
+            select(Songs, UserSaveSong.create_time, Artists.artist_name, Albums.album_name)
             .join(UserSaveSong, Songs.song_id==UserSaveSong.song_id)
             .outerjoin(Artists, Songs.artist_id == Artists.artist_id)
+            .outerjoin(Albums, Songs.album_id == Albums.album_id)
             .where(UserSaveSong.user_id == current_user.user_id)
         )
         count_base = (
@@ -96,15 +102,21 @@ async def list_favorites(
         )
         rows = result.all()
         items = [
-            FavoriteSongResponse(
-                song_id=row.song_id,
-                song_name=row.song_name,
-                artist_id=row.artist_id,
-                artist_name=row.artist_name or "",
-                album_id=row.album_id,
-                picture_url=row.picture_url,
-                create_time=row.create_time
-            ).model_dump() for row in rows
+            {
+                "song_id": s.song_id,
+                "song_name": s.song_name,
+                "artist_id": s.artist_id,
+                "artist_name": artist_name or "",
+                "album_id": s.album_id,
+                "album_name": album_name or "",
+                "picture_url": s.picture_url or "",
+                "source": s.source or "",
+                "platform_id": s.platform_id or "",
+                "download_url": s.download_url or "",
+                "is_love": True,
+                "create_time": ct.isoformat(),
+            }
+            for s, ct, artist_name, album_name in rows
         ]
 
     elif type == "playlist":
@@ -189,6 +201,7 @@ async def unsave_song(
 
     await db.delete(saved)
     await db.flush()
+    await cache_delete("fav:*")
     return APIResponse(message="Song unsaved")
 
 @router.delete("/playlists/{playlist_id}", response_model=APIResponse)
@@ -206,6 +219,7 @@ async def unsave_playlist(
 
     await db.delete(saved)
     await db.flush()
+    await cache_delete("fav:*")
     return APIResponse(message="Playlist unsaved")
 
 @router.delete("/albums/{album_id}", response_model=APIResponse)
@@ -222,4 +236,5 @@ async def unsave_album(
         return APIResponse(code=404, message="Album not saved")
     await db.delete(saved)
     await db.flush()
+    await cache_delete("fav:*")
     return APIResponse(message="Album unsaved")

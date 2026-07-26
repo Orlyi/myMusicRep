@@ -1,10 +1,371 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8" />
+    <title>拖拽排序</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            padding: 40px;
+        }
+
+        .app {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .app-title {
+            font-size: 20px;
+            color: #1a1a1a;
+            margin-bottom: 16px;
+        }
+
+        .app-sub {
+            color: #999;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        .draggable-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* ===== 拖拽项 ===== */
+        .drag-item {
+            padding: 14px 18px;
+            background: #fafafa;
+            border: 2px solid #e8ecf1;
+            border-radius: 8px;
+            cursor: grab;
+            user-select: none;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .drag-item:hover {
+            border-color: #1890ff;
+            background: #f0f7ff;
+        }
+
+        .drag-item .drag-handle {
+            color: #bfbfbf;
+            font-size: 18px;
+            cursor: grab;
+        }
+
+        .drag-item .content {
+            flex: 1;
+        }
+
+        .drag-item .index-badge {
+            background: #e8ecf1;
+            color: #666;
+            font-size: 12px;
+            padding: 2px 10px;
+            border-radius: 12px;
+        }
+
+        /* ===== 拖拽状态 ===== */
+        .drag-item.dragging {
+            opacity: 0.4;
+            transform: scale(0.95);
+            border-color: #1890ff;
+            background: #e6f7ff;
+        }
+
+        .drag-item.drag-over {
+            border-color: #1890ff;
+            background: #e6f7ff;
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+        }
+
+        .drag-item.drag-over::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #1890ff;
+            border-radius: 2px;
+        }
+
+        /* ===== 跟随鼠标的拖拽副本 ===== */
+        .drag-ghost {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            padding: 14px 18px;
+            background: white;
+            border: 2px solid #1890ff;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            transform: rotate(-2deg) scale(1.05);
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .reset-btn {
+            margin-top: 16px;
+            padding: 8px 20px;
+            background: #f0f2f5;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .reset-btn:hover {
+            background: #e4e7ec;
+        }
+
+        .current-order {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #666;
+        }
+    </style>
 </head>
 <body>
-$END$
+
+    <div id="root"></div>
+
+    <!-- ===== 引入 React 和 Babel ===== -->
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect, useCallback } = React;
+
+        // ============================================================
+        // 1. 拖拽排序组件（只使用鼠标拖拽，更可控）
+        // ============================================================
+        const DraggableList = ({ items: initialItems, onOrderChange }) => {
+            const [items, setItems] = useState(initialItems);
+            const [dragIndex, setDragIndex] = useState(null);
+            const [dragOverIndex, setDragOverIndex] = useState(null);
+            const [isDragging, setIsDragging] = useState(false);
+            const [ghostPosition, setGhostPosition] = useState({ x: 0, y: 0 });
+
+            const ghostRef = useRef(null);
+            const offsetRef = useRef({ x: 0, y: 0 });
+            const listRef = useRef(null);
+
+            // 开始拖拽
+            const handleMouseDown = (e, index) => {
+                if (e.button !== 0) return;
+
+                const rect = e.currentTarget.getBoundingClientRect();
+                offsetRef.current = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+
+                setDragIndex(index);
+                setDragOverIndex(index);
+                setIsDragging(true);
+                setGhostPosition({
+                    x: e.clientX - offsetRef.current.x,
+                    y: e.clientY - offsetRef.current.y
+                });
+
+                // 阻止文本选择
+                document.body.style.userSelect = 'none';
+
+                // 创建拖拽幽灵
+                const ghost = document.createElement('div');
+                ghost.className = 'drag-ghost';
+                ghost.textContent = items[index].name || `Item ${index + 1}`;
+                ghost.style.left = `${e.clientX - offsetRef.current.x}px`;
+                ghost.style.top = `${e.clientY - offsetRef.current.y}px`;
+                document.body.appendChild(ghost);
+                ghostRef.current = ghost;
+
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+            };
+
+            // 拖拽移动
+            const handleMouseMove = useCallback((e) => {
+                e.preventDefault();
+
+                if (!isDragging || dragIndex === null) return;
+
+                // 更新幽灵位置
+                if (ghostRef.current) {
+                    ghostRef.current.style.left = `${e.clientX - offsetRef.current.x}px`;
+                    ghostRef.current.style.top = `${e.clientY - offsetRef.current.y}px`;
+                }
+
+                // 计算目标索引
+                const elements = listRef.current?.querySelectorAll('.drag-item') || [];
+                let targetIndex = dragIndex;
+
+                elements.forEach((el, index) => {
+                    const rect = el.getBoundingClientRect();
+                    const centerY = rect.top + rect.height / 2;
+                    // 如果鼠标在元素中心下方，并且目标索引大于当前索引
+                    if (e.clientY > centerY && index > targetIndex) {
+                        targetIndex = index;
+                    }
+                    // 如果鼠标在元素中心上方，并且目标索引小于当前索引
+                    else if (e.clientY < centerY && index < targetIndex) {
+                        targetIndex = index;
+                    }
+                });
+
+                // 限制范围
+                targetIndex = Math.max(0, Math.min(targetIndex, items.length - 1));
+
+                if (targetIndex !== dragOverIndex) {
+                    setDragOverIndex(targetIndex);
+                }
+            }, [isDragging, dragIndex, items.length, dragOverIndex]);
+
+            // 结束拖拽
+            const handleMouseUp = useCallback(() => {
+                if (isDragging && dragIndex !== null && dragOverIndex !== null) {
+                    // 执行排序
+                    if (dragIndex !== dragOverIndex) {
+                        const newItems = [...items];
+                        const [draggedItem] = newItems.splice(dragIndex, 1);
+                        newItems.splice(dragOverIndex, 0, draggedItem);
+
+                        setItems(newItems);
+                        onOrderChange?.(newItems);
+                    }
+                }
+
+                // 清理
+                setIsDragging(false);
+                setDragIndex(null);
+                setDragOverIndex(null);
+
+                if (ghostRef.current) {
+                    document.body.removeChild(ghostRef.current);
+                    ghostRef.current = null;
+                }
+
+                document.body.style.userSelect = '';
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            }, [isDragging, dragIndex, dragOverIndex, items, onOrderChange, handleMouseMove]);
+
+            // 清理事件
+            useEffect(() => {
+                return () => {
+                    document.removeEventListener('mousemove', handleMouseMove);
+                    document.removeEventListener('mouseup', handleMouseUp);
+                    if (ghostRef.current) {
+                        document.body.removeChild(ghostRef.current);
+                    }
+                    document.body.style.userSelect = '';
+                };
+            }, [handleMouseMove]);
+
+            // 重置顺序
+            const resetOrder = () => {
+                setItems(initialItems);
+                onOrderChange?.(initialItems);
+            };
+
+            return (
+                <div ref={listRef}>
+                    <div className="draggable-list">
+                        {items.map((item, index) => (
+                            <div
+                                key={item.id || index}
+                                className={`drag-item
+                                    ${dragIndex === index && isDragging ? 'dragging' : ''}
+                                    ${dragOverIndex === index && isDragging && dragIndex !== index ? 'drag-over' : ''}
+                                `}
+                                onMouseDown={(e) => handleMouseDown(e, index)}
+                                style={{
+                                    cursor: 'grab',
+                                    position: 'relative'
+                                }}
+                            >
+                                <span className="drag-handle">⠿</span>
+                                <span className="content">
+                                    {item.name || `Item ${index + 1}`}
+                                </span>
+                                <span className="index-badge">#{index + 1}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <button className="reset-btn" onClick={resetOrder}>
+                        🔄 重置顺序
+                    </button>
+
+                    <div className="current-order">
+                        <strong>当前顺序：</strong>
+                        {items.map((item, i) => (
+                            <span key={item.id || i}>
+                                {item.name || `Item ${i + 1}`}
+                                {i < items.length - 1 ? ' → ' : ''}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // ============================================================
+        // 2. App
+        // ============================================================
+        function App() {
+            const [items, setItems] = useState([
+                { id: 1, name: '🍎 苹果' },
+                { id: 2, name: '🍌 香蕉' },
+                { id: 3, name: '🍊 橙子' },
+                { id: 4, name: '🍇 葡萄' },
+                { id: 5, name: '🍓 草莓' },
+                { id: 6, name: '🍉 西瓜' },
+            ]);
+
+            const handleOrderChange = (newItems) => {
+                console.log('顺序已更改:', newItems.map(item => item.name));
+            };
+
+            return (
+                <div className="app">
+                    <h1 className="app-title">📦 拖拽排序</h1>
+                    <p className="app-sub">拖拽项目重新排列顺序</p>
+
+                    <DraggableList
+                        items={items}
+                        onOrderChange={handleOrderChange}
+                    />
+                </div>
+            );
+        }
+
+        // ============================================================
+        // 3. 渲染
+        // ============================================================
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+
 </body>
 </html>

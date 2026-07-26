@@ -6,6 +6,8 @@ export const register= (data)=> client.post('/auth/register', data)
 
 export const getMe= ()=> client.get('/auth/me')
 
+export const changePassword = (data) => client.post('/auth/change-password', data)
+
 export const uploadAvatar = (file) => {
     const formData = new FormData()
     formData.append('file', file)

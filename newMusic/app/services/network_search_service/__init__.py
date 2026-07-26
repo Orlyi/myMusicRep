@@ -57,10 +57,18 @@ async def network_get_play_url(
     platform_id: str,
     source: str,
     sign: str | None = None,
-) -> str | None:
-    """获取歌曲播放地址"""
+) -> tuple[str | None, str | None]:
+    """获取歌曲播放地址
+
+    Returns:
+        (url_or_None, fail_reason_or_None)
+    """
     searcher = _get_searcher(source)
-    return await searcher.get_play_url(platform_id, sign)
+    url = await searcher.get_play_url(platform_id, sign)
+    if url:
+        return url, None
+    reason = getattr(searcher, "play_url_fail_reason", None)
+    return None, reason or "获取播放地址失败"
 
 
 async def network_get_lyric(platform_id: str, source: str = "netease") -> str | None:

@@ -25,7 +25,7 @@ function recordListen(songId) {
     if (!songId) return
     const token = localStorage.getItem('token') || sessionStorage.getItem('token')
     if (!token) return
-    fetch(`http://localhost:8000/api/v1/songs/${songId}/listen`, {
+    fetch(`http://serverIP:8000/api/v1/songs/${songId}/listen`, {
         method: 'POST',
         headers: {'Authorization': `Bearer ${token}`}
     }).catch(() => {})
@@ -83,6 +83,15 @@ export function PlayerProvider({ children }){
             .catch(() => setLyrics(null))
     }, [currentSong?.song_id])
 
+    // 同步 audio src —— currentSong 变化时保证 audio 有有效源
+    useEffect(() => {
+        if (!currentSong || !audioRef.current) return
+        const newUrl = resolveUrl(currentSong.url || currentSong.download_url || '')
+        if (newUrl && audioRef.current.src !== newUrl) {
+            audioRef.current.src = newUrl
+        }
+    }, [currentSong])
+
     const is_cdn_domain = (url) =>
         url && typeof url === 'string' && (
             url.includes('music.126.net') ||
@@ -93,9 +102,9 @@ export function PlayerProvider({ children }){
     const resolveUrl = (url) => {
         if (!url) return ''
         if (is_cdn_domain(url)) {
-            return `/api/v1/network/audio-proxy?url=${encodeURIComponent(url)}`
+            return `http://serverIP:8000/api/v1/network/audio-proxy?url=${encodeURIComponent(url)}`
         }
-        return url.startsWith('http') ? url : `http://localhost:8000${url}`
+        return url.startsWith('http') ? url : `http://serverIP:8000${url}`
     }
 
     const playIndex = useCallback((index) => {
@@ -123,28 +132,32 @@ export function PlayerProvider({ children }){
             setQueue(prev => prev.map((s, i) => i === existingIdx ? item : s))
             playIndex(existingIdx)
         } else {
+            const newIdx = queue.length
             setQueue(prev => [...prev, item])
-            setTimeout(() => {
-                setCurrentIndex(queue.length)
-                setIsPlaying(true)
-                if (audioRef.current) {
-                    audioRef.current.src = item.url
-                    audioRef.current.play().catch(err => {
-                        if (err.name !== 'AbortError') console.log('播放失败:', err)
-                    })
-                }
-            }, 0)
+            setCurrentIndex(newIdx)
+            setIsPlaying(true)
+            if (audioRef.current) {
+                audioRef.current.src = item.url
+                audioRef.current.play().catch(err => {
+                    if (err.name !== 'AbortError') console.log('播放失败:', err)
+                })
+            }
+            recordListen(song.song_id || item.song_id)
         }
     }, [queue, playIndex])
 
-    const addToQueue = useCallback((song) => {
-        const item = { ...song, url: resolveUrl(song.url || song.download_url) }
+    const addToQueue = useCallback((song, url) => {
+        const item = { ...song, url: resolveUrl(url || song.url || song.download_url) }
         setQueue(prev => {
             const exists = prev.some(s => s.song_id === song.song_id)
             if (exists) return prev
             return [...prev, item]
         })
-    }, [])
+        // 第一次加歌时设 currentIndex，让 PlayerBar 出现
+        if (queue.length === 0) {
+            setCurrentIndex(0)
+        }
+    }, [queue])
 
     const playQueue = useCallback((list, startIndex = 0) => {
         setQueue(list)
@@ -197,8 +210,10 @@ export function PlayerProvider({ children }){
     }
 
     const resume = () => {
-        audioRef.current?.play()
         setIsPlaying(true)
+        audioRef.current?.play().catch(err => {
+            if (err.name !== 'AbortError') console.log('播放失败:', err)
+        })
     }
 
     const updateCurrentSong = useCallback((song, update) => {

@@ -6,6 +6,7 @@ from app.core.deps import get_current_user
 from app.models import Users, Comments, Songs
 from app.schemas.common import APIResponse, PaginatedResponse
 from app.schemas.comment import CommentCreateRequest, CommentResponse
+from app.core.cache import cached, cache_delete
 
 router = APIRouter()
 
@@ -36,9 +37,11 @@ async def create_comment(
     )
     db.add(comment)
     await db.flush()
+    await cache_delete("cmt:*")
     return APIResponse(message="Comment posted",data={"comment_id":comment.comment_id})
 
 @router.get("/songs/{song_id}/comments", response_model=APIResponse)
+@cached("cmt:list", ttl=120)
 async def list_comments(
         song_id: int,
         page: int = Query(default=1, ge=1),
@@ -99,4 +102,5 @@ async def delete_comment(
 
     await db.delete(comment)
     await db.flush()
+    await cache_delete("cmt:*")
     return APIResponse(message="Comment deleted")

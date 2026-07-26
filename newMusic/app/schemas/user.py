@@ -41,12 +41,14 @@ class UserDetailsRequest(BaseModel):
     gender: str | None = None
     birthdate: date | None = None
     city: str | None = None
+    phone_number: str | None = None
 
 class UserDetailResponse(BaseModel):
     nick_name: str | None = None
     gender: str | None = None
     birthdate: date | None = None
     city: str | None = None
+    phone_number: str | None = None
     fans_count: int = 0
     followed_count: int = 0
 

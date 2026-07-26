@@ -1,25 +1,14 @@
-# ── FastAPI 核心 ──
-fastapi>=0.115,<1.0
-uvicorn[standard]>=0.30,<1.0
-
-# ── 数据库 ──
-sqlalchemy[asyncio]>=2.0,<3.0
-asyncmy>=0.2.9          # 异步 MySQL 驱动（比 aiomysql 快 3-5 倍）
-alembic>=1.13,<2.0      # 数据库迁移
-
-# ── 数据验证 ──
-pydantic>=2.7,<3.0
-pydantic-settings>=2.2,<3.0
-email-validator>=2.1    # EmailStr 支持
-
-# ── 认证（后续使用） ──
-python-jose[cryptography]>=3.3
-passlib[bcrypt]>=1.7
-
-# ── 工具 ──
-python-dotenv>=1.0
-httpx>=0.27             # HTTP 客户端（爬虫/测试）
-
-# ── Redis ──
-redis>=5.0
-hiredis>=2.0            # C 解析器，比纯 Python 快 10 倍
+# myMusic 后端生产依赖（精简化，不含爬虫/数据科学等）
+fastapi>=0.138.0
+uvicorn>=0.49.0
+sqlalchemy>=2.0
+asyncmy>=0.2.11
+pydantic>=2.13
+pydantic-settings>=2.14
+python-jose>=3.5
+bcrypt>=5.0
+httpx>=0.28
+redis>=8.0
+alembic>=1.18
+python-multipart>=0.0.32
+Pillow>=12.0

@@ -9,10 +9,28 @@ from app.models import Users, UserDetails
 from app.schemas.common import APIResponse
 from app.schemas.user import UserRegisterRequest, UserLoginRequest, UserLoginResponse, UserRegisterResponse, UserBase
 from app.utils.security import hash_password, verify_password, create_access_token
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
 UPLOAD_DIR = "uploads/avatars"
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str = Field(min_length=6, max_length=32)
+    new_password: str = Field(min_length=6, max_length=32)
+
+
+@router.post("/change-password", response_model=APIResponse)
+async def change_password(
+        body: ChangePasswordRequest,
+        current_user: Users = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db)):
+    if not verify_password(body.old_password, current_user.password):
+        return APIResponse(code=400, message="原密码错误")
+    current_user.password = hash_password(body.new_password)
+    await db.flush()
+    return APIResponse(message="密码修改成功")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/login", response_model=APIResponse)

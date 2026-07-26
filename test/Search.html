@@ -1,10 +1,234 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8" />
+    <title>防抖搜索</title>
 </head>
 <body>
-$END$
+
+    <div id="root"></div>
+
+    <!-- ===== 引入 React 和 Babel ===== -->
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        // ============================================================
+        // 1. 自定义 Hook：防抖搜索（带竞态处理）
+        // ============================================================
+        function useDebounceSearch(api, delay = 500) {
+            const [keyword, setKeyword] = useState('');
+            const [results, setResults] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+
+            // 🔥 关键：用于处理竞态条件
+            const requestIdRef = useRef(0);
+            const timerRef = useRef(null);
+
+            const handleSearch = useCallback((value) => {
+                const trimmed = value.trim();
+                setKeyword(value);
+
+                // 清除之前的定时器
+                clearTimeout(timerRef.current);
+
+                // 空值处理
+                if (!trimmed) {
+                    setResults([]);
+                    setLoading(false);
+                    return;
+                }
+
+                setLoading(true);
+                setError(null);
+
+                // 🔥 生成唯一请求 ID
+                const currentRequestId = ++requestIdRef.current;
+
+                timerRef.current = setTimeout(async () => {
+                    try {
+                        const data = await api(trimmed);
+
+                        // 🔥 只有最新的请求才更新结果
+                        if (currentRequestId === requestIdRef.current) {
+                            setResults(data);
+                            setLoading(false);
+                        }
+                    } catch (err) {
+                        // 🔥 只有最新的请求才显示错误
+                        if (currentRequestId === requestIdRef.current) {
+                            setError(err.message);
+                            setLoading(false);
+                        }
+                    }
+                }, delay);
+            }, [api, delay]);
+
+            // 清空搜索
+            const clearSearch = useCallback(() => {
+                clearTimeout(timerRef.current);
+                setKeyword('');
+                setResults([]);
+                setLoading(false);
+                setError(null);
+                requestIdRef.current = 0;
+            }, []);
+
+            // 组件卸载时清理
+            useEffect(() => {
+                return () => {
+                    clearTimeout(timerRef.current);
+                };
+            }, []);
+
+            return { keyword, results, loading, error, handleSearch, clearSearch };
+        }
+
+        // ============================================================
+        // 2. 搜索组件
+        // ============================================================
+        function SearchBox() {
+            // 模拟 API（搜索用户）
+            const searchUsers = useCallback(async (keyword) => {
+                // 模拟网络延迟（随机 200-800ms）
+                const delay = 200 + Math.random() * 600;
+                await new Promise(resolve => setTimeout(resolve, delay));
+
+                // 模拟数据
+                const allUsers = [
+                    'Alice Johnson', 'Bob Smith', 'Charlie Brown',
+                    'David Wilson', 'Emma Davis', 'Frank Miller',
+                    'Grace Lee', 'Henry Taylor', 'Ivy Chen',
+                    'Jack Anderson', 'Kate Martinez', 'Liam Thompson'
+                ];
+
+                const filtered = allUsers.filter(name =>
+                    name.toLowerCase().includes(keyword.toLowerCase())
+                );
+
+                return filtered.map((name, index) => ({
+                    id: index,
+                    name: name,
+                    email: `${name.toLowerCase().replace(' ', '.')}@example.com`
+                }));
+            }, []);
+
+            const { keyword, results, loading, error, handleSearch, clearSearch } =
+                useDebounceSearch(searchUsers, 400);
+
+            return (
+                <div style={{ maxWidth: '500px', margin: '40px auto', padding: '0 20px' }}>
+                    <h1>🔍 防抖搜索</h1>
+                    <p style={{ color: '#999', fontSize: '14px' }}>
+                        输入关键词，等待 400ms 后自动搜索
+                    </p>
+
+                    <div style={{ position: 'relative' }}>
+                        <input
+                            type="text"
+                            value={keyword}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            placeholder="输入用户名搜索..."
+                            style={{
+                                width: '100%',
+                                padding: '12px 16px',
+                                fontSize: '16px',
+                                border: '2px solid #ddd',
+                                borderRadius: '8px',
+                                outline: 'none',
+                                transition: 'border-color 0.2s'
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = '#1890ff'}
+                            onBlur={(e) => e.target.style.borderColor = '#ddd'}
+                        />
+
+                        {/* 清除按钮 */}
+                        {keyword && (
+                            <button
+                                onClick={clearSearch}
+                                style={{
+                                    position: 'absolute',
+                                    right: '12px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'none',
+                                    border: 'none',
+                                    fontSize: '20px',
+                                    cursor: 'pointer',
+                                    color: '#999'
+                                }}
+                            >
+                                ×
+                            </button>
+                        )}
+                    </div>
+
+                    {/* 加载状态 */}
+                    {loading && (
+                        <div style={{ padding: '16px 0', color: '#1890ff' }}>
+                            ⏳ 搜索中...
+                        </div>
+                    )}
+
+                    {/* 错误状态 */}
+                    {error && (
+                        <div style={{ padding: '16px 0', color: '#ff4d4f' }}>
+                            ❌ {error}
+                        </div>
+                    )}
+
+                    {/* 结果列表 */}
+                    {!loading && !error && (
+                        <ul style={{
+                            listStyle: 'none',
+                            padding: 0,
+                            marginTop: '12px'
+                        }}>
+                            {results.length > 0 ? (
+                                results.map(user => (
+                                    <li key={user.id} style={{
+                                        padding: '12px 16px',
+                                        borderBottom: '1px solid #f0f0f0',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}>
+                                        <div>
+                                            <div style={{ fontWeight: '500' }}>{user.name}</div>
+                                            <div style={{ fontSize: '13px', color: '#999' }}>
+                                                {user.email}
+                                            </div>
+                                        </div>
+                                    </li>
+                                ))
+                            ) : keyword.trim() && (
+                                <div style={{ padding: '16px 0', color: '#999', textAlign: 'center' }}>
+                                    😕 未找到匹配结果
+                                </div>
+                            )}
+                        </ul>
+                    )}
+
+                    {/* 空状态提示 */}
+                    {!keyword.trim() && !loading && (
+                        <div style={{ padding: '40px 0', color: '#ccc', textAlign: 'center' }}>
+                            💡 输入关键词开始搜索
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ============================================================
+        // 3. 渲染
+        // ============================================================
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<SearchBox />);
+    </script>
+
 </body>
 </html>
