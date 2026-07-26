@@ -28,6 +28,7 @@ async def get_redis():
             host=settings.redis_host,
             port=settings.redis_port,
             db=settings.redis_db,
+            username=settings.redis_user or None,
             password=settings.redis_password or None,
             decode_responses=True,   # 自动返回 str 而不是 bytes
             max_connections=20,

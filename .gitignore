@@ -26,6 +26,7 @@ spiders/
 备份/
 music/
 web/uploads/
+android/
 
 # 测试文件
 test/

@@ -44,7 +44,7 @@ export default function HomePage(){
 
     function resolveCover(url) {
         if (!url) return null
-        if (url.startsWith("/static")) return `http://serverIP:8000${url}`
+        if (url.startsWith("/static")) return `http://localhost:8000${url}`
         return url
     }
 

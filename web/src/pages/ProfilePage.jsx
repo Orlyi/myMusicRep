@@ -217,7 +217,7 @@ export default function ProfilePage(){
             <section className="profile-info" onClick={()=>navigate("/profile/detail")}>
                 <div className="avatar">
                     {user?.avatar_url ? (
-                        <img src={`http://serverIP:8000${user.avatar_url}`} alt="头像" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} />
+                        <img src={`http://localhost:8000${user.avatar_url}`} alt="头像" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} />
                     ) : (
                         user?.user_name?.[0]?.toUpperCase() || "?"
                     )}

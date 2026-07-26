@@ -88,7 +88,7 @@ export default function ProfileDetailPage(){
 
             {/* 头像 */}
             <div style={{display:"flex", justifyContent:"center", marginBottom:"0", position:"relative"}}>
-                <img src={user?.avatar_url ? `http://serverIP:8000${user.avatar_url}` : ""}
+                <img src={user?.avatar_url ? `http://localhost:8000${user.avatar_url}` : ""}
                     alt="" style={{width:"20vw", height:"20vw", maxWidth:90, maxHeight:90, borderRadius:"50%", objectFit:"cover", background:"#eee"}} />
                 {editing && (
                     <label style={{

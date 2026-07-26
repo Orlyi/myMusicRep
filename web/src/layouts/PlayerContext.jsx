@@ -25,7 +25,7 @@ function recordListen(songId) {
     if (!songId) return
     const token = localStorage.getItem('token') || sessionStorage.getItem('token')
     if (!token) return
-    fetch(`http://serverIP:8000/api/v1/songs/${songId}/listen`, {
+    fetch(`http://localhost:8000/api/v1/songs/${songId}/listen`, {
         method: 'POST',
         headers: {'Authorization': `Bearer ${token}`}
     }).catch(() => {})
@@ -102,9 +102,9 @@ export function PlayerProvider({ children }){
     const resolveUrl = (url) => {
         if (!url) return ''
         if (is_cdn_domain(url)) {
-            return `http://serverIP:8000/api/v1/network/audio-proxy?url=${encodeURIComponent(url)}`
+            return `http://localhost:8000/api/v1/network/audio-proxy?url=${encodeURIComponent(url)}`
         }
-        return url.startsWith('http') ? url : `http://serverIP:8000${url}`
+        return url.startsWith('http') ? url : `http://localhost:8000${url}`
     }
 
     const playIndex = useCallback((index) => {

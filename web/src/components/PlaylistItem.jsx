@@ -1,8 +1,8 @@
 import { Trash2 } from "lucide-react";
 
 function resolveCover(url) {
-    if (!url) return "http://serverIP:8000/static/defaults/photo.jpg"
-    if (url.startsWith("/static")) return `http://serverIP:8000${url}`
+    if (!url) return "http://localhost:8000/static/defaults/photo.jpg"
+    if (url.startsWith("/static")) return `http://localhost:8000${url}`
     return url
 }
 
