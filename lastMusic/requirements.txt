@@ -1,0 +1,14 @@
+# myMusic 后端生产依赖（精简化，不含爬虫/数据科学等）
+fastapi>=0.138.0
+uvicorn>=0.49.0
+sqlalchemy>=2.0
+asyncmy>=0.2.11
+pydantic>=2.13
+pydantic-settings>=2.14
+python-jose>=3.5
+bcrypt>=5.0
+httpx>=0.28
+redis>=8.0
+alembic>=1.18
+python-multipart>=0.0.32
+Pillow>=12.0
