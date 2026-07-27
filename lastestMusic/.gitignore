@@ -1,0 +1,16 @@
+# Byte-compiled
+__pycache__/
+*.py[cod]
+
+# Build
+*.spec
+
+# Environment (track .env.prod but ignore .env)
+.env
+
+# Uploads
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
