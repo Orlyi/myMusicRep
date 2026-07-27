@@ -32,6 +32,8 @@ async def get_redis():
             password=settings.redis_password or None,
             decode_responses=True,   # 自动返回 str 而不是 bytes
             max_connections=20,
+            socket_connect_timeout=1,   # 连接超时 1 秒
+            socket_timeout=1,           # 读写超时 1 秒
         )
     return r.Redis(connection_pool=_pool)
 

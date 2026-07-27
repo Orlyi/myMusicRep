@@ -1,4 +1,4 @@
-# myMusic 后端生产依赖（精简化，不含爬虫/数据科学等）
+# myMusic 后端生产依赖
 fastapi>=0.138.0
 uvicorn>=0.49.0
 sqlalchemy>=2.0
@@ -12,3 +12,5 @@ redis>=8.0
 alembic>=1.18
 python-multipart>=0.0.32
 Pillow>=12.0
+requests>=2.31
+pycryptodome>=3.20.0

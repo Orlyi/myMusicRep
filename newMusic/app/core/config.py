@@ -41,7 +41,7 @@ class Settings(BaseSettings):
             f"?charset=utf8mb4"
         )
 
-    model_config = {"env_file": ".env.prod", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": [".env", ".env.prod"], "env_file_encoding": "utf-8"}
 
 
 settings = Settings()
