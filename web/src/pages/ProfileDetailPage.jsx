@@ -74,7 +74,7 @@ export default function ProfileDetailPage(){
 
     return (
         <div className="page" style={{ display:"flex", flexDirection:"column"}}>
-            <div style={{display:"flex", alignItems:"center", gap:"0.5em", marginBottom:"1em"}}>
+            <div style={{display:"flex", alignItems:"center", gap:"0.5em", marginBottom:"1em",justifyContent:"center" }}>
                 <ChevronLeft size={24} onClick={() => navigate(-1)} style={{cursor:"pointer",position:"fixed",left:"4%",marginTop:"2vh",}} />
                 <span style={{fontSize:"1.1em", fontWeight:600,marginTop:"2vh",}}>个人信息</span>
                 <button onClick={() => editing ? handleSave() : setEditing(true)}

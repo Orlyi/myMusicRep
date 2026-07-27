@@ -6,8 +6,8 @@ export default function AboutPage() {
 
     return (
         <div className="page" style={{ padding: "1em", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5em", marginBottom: "2em", width: "100%" }}>
-                <ChevronLeft size={24} onClick={() => navigate(-1)} style={{ cursor: "pointer" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5em", marginBottom: "2em", width: "100%" ,justifyContent:"center" }}>
+                <ChevronLeft size={24} onClick={() => navigate(-1)} style={{ cursor: "pointer",position:"fixed",left:"4vw" }} />
                 <span style={{ fontSize: "1.1em", fontWeight: 600 }}>关于我们</span>
             </div>
 

@@ -3,7 +3,7 @@ import {Heart, ListPlus, EllipsisVertical} from "lucide-react";
 export function SearchSongItem({song, onPlay, onSave, onAdd, onMore}){
 
     return(
-        <div className="search-song-item flex" style={{height:"8vh",width:"100%"}} onClick={() => onPlay?.(song.platform_id)}>
+        <div className="search-song-item flex active" style={{height:"10vh",width:"100%",paddingTop:"0.6em"}} onClick={() => onPlay?.(song.platform_id)}>
             <div className="search-song-content" style={{flex:"1", minWidth:0,paddingLeft:"1em"}}>
                 <div style={{
                     overflow: "hidden",

@@ -117,6 +117,10 @@ a.isAct{
     gap: 0.3em;
 }
 
+.active:active{
+    background-color: #d7d7d7;
+}
+
 .queue{
     .queue-overlay{
         position: fixed;

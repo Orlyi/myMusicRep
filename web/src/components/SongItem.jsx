@@ -4,7 +4,7 @@ import {Heart, ListPlus, EllipsisVertical} from "lucide-react"
 
 export function SongItem({song, onPlay, onSave, onAdd, onMore}){
     return(
-        <div style={{display:"flex",justifyContent:"center",alignItems:"center",height:"10vh"}}>
+        <div style={{display:"flex",justifyContent:"center",alignItems:"center",height:"10vh" }} className="active">
 
             <img src={song?.picture_url} alt="?" style={{height:"2.5em", borderRadius:"4px", aspectRatio:"1/1", objectFit: "cover"}}></img>
 

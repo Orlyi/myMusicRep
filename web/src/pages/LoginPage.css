@@ -8,9 +8,10 @@ main.loginpage{
     form{
         div{
             button{
-                width: 70vw;
+                width: 80vw;
                 background: rgb(119 188 205);
                 margin: 1vh;
+                height: 8vh;
                 color: #f5f5f5;
             }
             display: flex;
@@ -20,7 +21,7 @@ main.loginpage{
                 padding-top: 0.5em;
                 padding-bottom: 0.5em;
                 input{
-                    height: 6vh;
+                    height: 8vh;
                     width: 60vw;
                     letter-spacing: 0.1em;
                     /*background: brown;*/

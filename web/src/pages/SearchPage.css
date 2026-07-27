@@ -54,28 +54,29 @@
 .type{
     flex: 1;
     flex-direction: column;
+    color: #868686;
 }
 
 .type-active{
-    color: #5aa0ff;
+    color: #000000;
 }
 
 .type-active .small-font{
-    color: #5aa0ff;
+    color: #000000;
 }
 
 .WY{
-    color: #ff3c3c;
+    color: #000000;
 }
 .WY .small-font{
-    color: #ff3c3c;
+    color: #000000;
 }
 
 .QQ{
-    color: #1db954;
+    color: #000000;
 }
 .QQ .small-font{
-    color: #1db954;
+    color: #000000;
 }
 
 .small-font{

@@ -39,7 +39,7 @@ export default function SecurityPage() {
 
     return (
         <div className="page" style={{ padding: "1em",flexDirection:"column" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5em", marginBottom: "1.5em" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5em", marginBottom: "1.5em",justifyContent:"center"  }}>
                 <ChevronLeft size={24} onClick={() => navigate(-1)} style={{ cursor: "pointer",position:"fixed",left:"4vw" }} />
                 <span style={{ fontSize: "1.1em", fontWeight: 600 }}>安全中心</span>
             </div>
