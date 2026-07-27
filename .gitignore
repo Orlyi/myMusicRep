@@ -22,6 +22,8 @@ Thumbs.db
 
 # ── 不上传的目录 ──
 oldMusic/
+newMusic/spiders/
+lastMusic/spiders/
 spiders/
 备份/
 music/
