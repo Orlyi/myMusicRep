@@ -1,11 +1,6 @@
 import sys
 import os
 
-# 把 spiders 目录加到 path，方便 import encrypt.py
-_spiders_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "spiders")
-if _spiders_dir not in sys.path:
-    sys.path.insert(0, _spiders_dir)
-
 import asyncio
 
 import httpx
@@ -195,7 +190,7 @@ class NeteaseSearcher(BaseSearcher):
             sys.stderr.flush()
 
         try:
-            from encrypt import get_encrypted_params
+            from .encrypt import get_encrypted_params
             encrypted = get_encrypted_params(int(platform_id))
         except ImportError as e:
             debug(f"encrypt 模块导入失败: {e}")
