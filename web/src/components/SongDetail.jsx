@@ -82,7 +82,7 @@ export function SongDetail({onAdd, onSave, onAddToPlaylist, onDownload}){
         }
     };
 
-    if (!effectiveSong || isSearchPage) return null;
+    if (!effectiveSong) return null;
 
     const handleAdd = () => {
         addToQueue(effectiveSong);

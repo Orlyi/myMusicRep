@@ -79,7 +79,7 @@ async def get_recent_listens(
                 "song_name": s.song_name,
                 "artist_names": an or "",
                 "artist_name": an or "",
-                "album_name": aln or s.album_name or "",
+                "album_name": aln or (s.album_name if hasattr(s, 'album_name') else '') or "",
                 "picture_url": s.picture_url or "",
                 "download_url": s.download_url or "",
                 "source": s.source or "",
