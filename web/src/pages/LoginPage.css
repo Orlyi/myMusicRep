@@ -1,0 +1,60 @@
+
+
+header.loginpage{
+    height: 10%;
+}
+
+main.loginpage{
+    form{
+        div{
+            button{
+                width: 80vw;
+                background: rgb(119 188 205);
+                margin: 1vh;
+                height: 8vh;
+                color: #f5f5f5;
+            }
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            label{
+                padding-top: 0.5em;
+                padding-bottom: 0.5em;
+                input{
+                    height: 8vh;
+                    width: 60vw;
+                    letter-spacing: 0.1em;
+                    /*background: brown;*/
+                }
+                .pas-input{
+                    font-size: 1.4em;
+                    font-weight: bolder;
+                }
+
+                .user-input{
+                    font-size: 1.4em;
+                    font-weight: bolder;
+                }
+                input::placeholder{
+                    text-indent: 0.8em;
+                }
+            }
+
+        }
+
+    }
+    div{
+        display: flex;
+        justify-content: space-evenly;
+        font-size: 0.6em;
+        label{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    }
+}
+
+.rem-font{
+    font-size: 0.6em;
+}

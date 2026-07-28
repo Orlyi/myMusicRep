@@ -1,0 +1,291 @@
+
+
+
+html, body, #root {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+*{
+    margin: 0;
+    padding: 0;
+}
+
+
+
+a{
+    text-decoration: none;
+    color: black;
+}
+
+button{
+    background: transparent;
+    border: none;
+}
+
+.page{
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    overflow: auto;
+    min-height: 0;
+    position: relative;
+}
+
+.app-layout{
+height: 100vh;
+overflow: hidden;
+position: relative;
+display: flex;
+flex-direction: column;
+}
+
+.main-content{
+flex: 1;
+overflow: auto;
+display: flex;
+flex-direction: column;
+min-height: 0;
+position: relative;
+}
+
+.nav{
+    width: 100%;
+    height: 10%;
+    background: #ffffff;
+    display: flex;
+    justify-content: space-around;
+    position: fixed;
+    bottom: 0;
+    z-index: 100;
+    a{
+        flex: 1;
+        flex-direction: column;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 0.8em;
+        color: #676767;
+        text-decoration: none;
+        font-weight: bold;
+
+    }
+    a:hover{
+        color: black;
+    }
+}
+a.isAct{
+    color:black;
+}
+
+/* 跑马灯 - 无缝循环 */
+.marquee-wrap{
+    overflow: hidden;
+    width: 100%;
+    white-space: nowrap;
+}
+.marquee-text{
+    display: inline-block;
+    white-space: nowrap;
+    animation: marquee 15s linear infinite;
+    will-change: transform;
+}
+@keyframes marquee{
+    0%{transform:translateX(0)}
+    100%{transform:translateX(-50%)}
+}
+
+.Player{
+    height: 10%;
+    width: 100%;
+    position: fixed;
+    bottom: 10%;
+    z-index: 99;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 820;
+    box-sizing: border-box;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+    background: rgba(255,255,255,0.8);
+}
+
+.Icon{
+    display: flex;
+    justify-content: space-between;
+    gap: 0.3em;
+}
+
+.active:active{
+    background-color: #d7d7d7;
+}
+
+.queue{
+    .queue-overlay{
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 845;
+    }
+    .queue-drawer{
+        position: fixed;
+        top: 30%;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        border-radius: 12px 12px 0 0;
+        background:white;
+        z-index: 846;
+        pointer-events: none;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        box-sizing: border-box;
+        border-left: #9a9a9a solid 1px;
+        padding: 1em;
+        overflow: auto;
+    }
+
+}
+
+.flex{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.top-nav{
+    width: 100%;
+    height: 10%;
+    background: rgb(255 255 255);
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    button{
+        height: 100%;
+        width: 20%;
+        position: absolute;
+        right: 0;
+    }
+    .top-nav-tab{
+        height: 100%;
+        width: 20%;
+        background: #ffffff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        .tab{
+            width: 30%;
+            transform: scaleX(0);
+            transition: all 0.3s ease;
+        }
+        .width_zero{
+            transform: scaleX(1);
+        }
+    }
+}
+
+.underline{
+    height: 0.1em;
+    width: 100%;
+    background: black;
+}
+
+.larger_fontsize{
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+input {
+    background: transparent;
+    border: none;
+    outline: none;
+}
+input[type="range"] {
+    height: 6px;
+}
+.newChecked{
+    appearance: none;
+    -webkit-appearance: none;
+    width: 0.8em;
+    height: 0.8em;
+    border: 0.1em solid darkgray;
+    border-radius: 4px;
+    background: white   ;
+    transition: all 0.3s ease;
+    margin: 0;
+    padding: 0;
+}
+.newChecked:checked{
+    border-color: #6e6e6e;
+    background: #6e6e6e;
+}
+
+.error-font{
+    font-size: 0.8em;
+    color: brown;
+}
+
+.sidebar.open{
+    transform: translateX(0);
+}
+
+.queue-drawer.openY{
+    transform: translateY(0);
+    z-index: 846;
+    pointer-events: auto;
+}
+
+.column{
+    flex-direction: column;
+}
+
+/* 底部抽屉 SongDetail */
+.bottom-drawer-overlay{
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0);
+    z-index: 880;
+    pointer-events: none;
+    transition: background 0.3s ease;
+}
+.bottom-drawer-overlay.show{
+    background: rgba(0, 0, 0, 0.4);
+    pointer-events: auto;
+}
+.bottom-drawer{
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 16px 16px 0 0;
+    background: white;
+    z-index: 881;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    pointer-events: none;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+.bottom-drawer.open{
+    transform: translateY(0);
+    pointer-events: auto;
+}
+.drawer-handle{
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: #ddd;
+    margin: 8px auto;
+}
+.drawer-close{
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: #666;
+}
